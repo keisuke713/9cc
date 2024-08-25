@@ -1,9 +1,4 @@
-#include <ctype.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "9cc.h"
 
 char *user_input;
@@ -49,8 +44,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-// とりあえず出来たから不要なコード削除して挙動確認理解
-// 終わったらステップ10
+ステップ10
 
 // ## 実行方法
 // `docker run --rm -v $HOME/c/9cc:/9cc -w /9cc compilerbook make test`
