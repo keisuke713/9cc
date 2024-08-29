@@ -44,7 +44,12 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 // 現在着目しているトークン
-extern Token *token;
+// extern Token *token;
+Token *token;
+
+LVar *new_lvar(LVar *next, char *name, int len, int offset);
+// ローカル変数
+LVar *locals;
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -110,6 +115,26 @@ bool startswith(char *p, char *q) {
     return memcmp(p, q, strlen(q)) == 0;
 }
 
+LVar *new_lvar(LVar *next, char *name, int len, int offset) {
+    LVar *lvar = calloc(1, sizeof(LVar));
+    lvar->next = next;
+    lvar->name = name;
+    lvar->len = len;
+    lvar->offset = offset;
+
+    locals = lvar;
+
+    return locals;
+}
+
+LVar *find_lvar(Token *tok) {
+    for (LVar *var = locals; var; var = var->next) {
+        if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+            return var;
+    }
+    return NULL;
+}
+
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p) {
     Token head;
@@ -124,8 +149,14 @@ Token *tokenize(char *p) {
         }
 
         if ('a' <= *p && *p <= 'z') {
-            cur = new_token(TK_IDENT, cur, p++, 0);
-            cur->len = 1;
+            // pは進んでいくのでスタート時点のアドレスを保持する
+            char *start = p;
+            int len = 0;
+            while ('a' <= *p && *p <= 'z') {
+                len++;
+                p++;
+            }
+            cur = new_token(TK_IDENT, cur, start, len);
             continue;
         }
 
@@ -280,7 +311,22 @@ Node *primary() {
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
-        node->offset = (tok->str[0] - 'a' + 1) * 8;
+
+        LVar *lvar = find_lvar(tok);
+        if (lvar) {
+            node->offset = lvar->offset;
+        } else {
+            if (!locals) {
+                locals = new_lvar(NULL, "dummy", 0, 0);
+            }
+            lvar = calloc(1, sizeof(LVar));
+            lvar->next = locals;
+            lvar->name = tok->str;
+            lvar->len = tok->len;
+            lvar->offset = locals->offset + 8; 
+            node->offset = lvar->offset;
+            locals = lvar;
+        }
         return node;
     }
 

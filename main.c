@@ -2,7 +2,8 @@
 #include "9cc.h"
 
 char *user_input;
-Token *token;
+// Token *token;
+extern Token *token;
 extern Node *code[100];
 
 int main(int argc, char **argv) {
@@ -13,8 +14,9 @@ int main(int argc, char **argv) {
 
     // トークナイズしてパースする
     user_input = argv[1];
+    // user_input = "foo = 2; foo;";
     token = tokenize(user_input);
-    program();
+    program(); // セグフォ
 
     // アセンブリの前半部分を出力
     printf(".intel_syntax noprefix\n");
@@ -44,10 +46,11 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-ステップ10
-
 // ## 実行方法
 // `docker run --rm -v $HOME/c/9cc:/9cc -w /9cc compilerbook make test`
 
 // for debug
 // docker run -v $HOME/c/9cc:/9cc -w /9cc --cap-add=SYS_PTRACE --security-opt seccomp=unconfined -it compilerbook /bin/bash
+// # gdb ./9cc
+// # b function name
+// # run

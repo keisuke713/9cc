@@ -51,4 +51,8 @@ assert 8 'a = 3; b = 5; a + b;'
 assert 9 'a = 3; b = 5 * 3; (a + b) / 2;'
 assert 1 'c = 0<1; z = 42 != 42; c >=z;'
 
+assert 3 'foo = 3;'
+assert 5 'foo = 2; foo + 3;'
+assert 6 'foo = 1; bar = 2 + 3; foo + bar;'
+
 echo OK
