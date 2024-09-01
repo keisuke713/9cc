@@ -192,7 +192,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>=;", *p) != NULL) {
+        if (strchr("+-*/()<>=;{}", *p) != NULL) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -235,11 +235,23 @@ void program() {
 }
 
 // stmt       = expr ";"
+//            | "{" stmt* "}"
 //            | "return" expr ";"
 //            | "if" "(" expr ")" stmt ("else" stmt)?
 Node *stmt() {
     Node *node;
-    if (consume("return")) {
+    if (consume("{")) {
+        Node *block_node = calloc(1, sizeof(Node));
+        Node *curr = block_node;
+        while (strncmp(token->str, "}", 1) != 0) {
+            curr->next = stmt();
+            curr = curr->next;
+        }
+        if (!consume("}"))
+            error_at(token->str, "'}'ではないトークンです");
+        block_node->kind = ND_BLOCK;
+        return block_node;
+    } else if (consume("return")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();

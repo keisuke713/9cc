@@ -41,6 +41,7 @@ typedef enum {
     ND_RETURN, // return statement
     ND_IF,     // if
     ND_ELSE,   // else  
+    ND_BLOCK,  // 複文
 } NodeKind;
 
 typedef struct Node Node;
@@ -56,6 +57,8 @@ struct Node {
     Node *cond;  // condition
     Node *then;
     Node *els;
+
+    Node *next; // 複文用
 };
 
 Node *new_node(NodeKind kind);

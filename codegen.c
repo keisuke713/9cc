@@ -12,7 +12,7 @@ void gen_lval(Node *node) {
     printf("    push rax\n");
 }
 
-int n_false_statement = 0;
+int n_label = 0;
 
 void gen(Node *node) {
     if (!node)
@@ -45,13 +45,28 @@ void gen(Node *node) {
         printf("    ret\n");
         return;
     case ND_IF:
+        int FalseStmtLabel = ++n_label; // 条件の結果がfalseだった時のjmp先
+        int AfterTrueStmtLabel = ++n_label; // 条件がtrueの時の処理が終わった後のjmp先
         gen(node->cond);
         printf("    pop rax\n");
         printf("    cmp rax, 0\n");
-        printf("    je .Lend%d\n", ++n_false_statement);
+        printf("    je .Lend%d\n", FalseStmtLabel);
         gen(node->then);
-        printf(".Lend%d:\n", n_false_statement); // falseだった時の挙動
+        printf("    jmp .Lend%d \n", AfterTrueStmtLabel);
+        printf(".Lend%d:\n", FalseStmtLabel);
         gen(node->els);
+        printf(".Lend%d:\n", AfterTrueStmtLabel);
+        return;
+    case ND_BLOCK:
+        node = node->next;
+        while (node) {
+            gen(node);
+
+            if (node->next)
+                printf("    pop rax \n");
+
+            node = node->next;
+        }
         return;
     }
 

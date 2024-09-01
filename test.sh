@@ -63,7 +63,16 @@ assert 6 'foo = 5; if (1<=2 == 1) foo = foo + 1; return foo;'
 assert 5 'foo = 5; if (1<=2 == 0) foo = 1; return foo;'
 assert 1 'foo = 1; if (1 == 2) foo = foo + 1; if (3 == 4) foo = foo + 2; return foo;'
 
+assert 1 'if (1) 1; else 2;'
 assert 2 'if (1 == 2) 1; else 2;'
 assert 2 'foo = 1; if (1 == 2) foo = foo + 2; else foo = foo + 1; return foo;'
+
+assert 3 '{1; 2; 3;}'
+assert 5 '{foo = 2; bar = 3; foo + bar;}'
+assert 10 'if (1 == 2) {foo = 3; return foo;} else { hoge = 10; return hoge; }'
+assert 2 'foo = 1; if (1) { foo = foo + 1; } else { bar = 10; foo + bar; }'
+assert 5 'foo = 1; if (1) { foo = 6; } else { foo = foo + 1; } if (foo > 4) { foo = foo - 1; } else { foo = foo + 4; } return foo;'
+
+assert 10 'foo = 5; if (foo == 1) { foo = foo - 1; } else { bar = 2; foo = foo * bar; } return foo;'
 
 echo OK

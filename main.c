@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
         // 式の評価結果としてスタックに一つ値が残っている
         // はずなので、スタックが溢れないようにポップしておく
-        printf("    pop rax\n");
+        printf("    pop rax \n");
     }
 
     // エピローグ
