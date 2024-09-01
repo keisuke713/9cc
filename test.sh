@@ -4,7 +4,7 @@ assert() {
   input="$2"
 
   ./9cc "$input" > tmp.s
-  gcc -static -o tmp tmp.s
+  gcc -static -g -o tmp tmp.s
   ./tmp
   actual="$?"
 
@@ -54,5 +54,16 @@ assert 1 'c = 0<1; z = 42 != 42; c >=z;'
 assert 3 'foo = 3;'
 assert 5 'foo = 2; foo + 3;'
 assert 6 'foo = 1; bar = 2 + 3; foo + bar;'
+
+assert 5 'foo = 5; return foo;'
+assert 5 'foo = 2; return foo + 3; 1;'
+
+assert 2 'if (1<2) 2;'
+assert 6 'foo = 5; if (1<=2 == 1) foo = foo + 1; return foo;'
+assert 5 'foo = 5; if (1<=2 == 0) foo = 1; return foo;'
+assert 1 'foo = 1; if (1 == 2) foo = foo + 1; if (3 == 4) foo = foo + 2; return foo;'
+
+assert 2 'if (1 == 2) 1; else 2;'
+assert 2 'foo = 1; if (1 == 2) foo = foo + 2; else foo = foo + 1; return foo;'
 
 echo OK

@@ -2,7 +2,6 @@
 #include "9cc.h"
 
 char *user_input;
-// Token *token;
 extern Token *token;
 extern Node *code[100];
 
@@ -14,9 +13,8 @@ int main(int argc, char **argv) {
 
     // トークナイズしてパースする
     user_input = argv[1];
-    // user_input = "foo = 2; foo;";
     token = tokenize(user_input);
-    program(); // セグフォ
+    program();
 
     // アセンブリの前半部分を出力
     printf(".intel_syntax noprefix\n");
