@@ -75,4 +75,10 @@ assert 5 'foo = 1; if (1) { foo = 6; } else { foo = foo + 1; } if (foo > 4) { fo
 
 assert 10 'foo = 5; if (foo == 1) { foo = foo - 1; } else { bar = 2; foo = foo * bar; } return foo;'
 
+assert 5 'foo();'
+assert 6 '1 + foo();'
+assert 7 'foo() + 2;'
+assert 5 'if (1) { return foo(); } else { foo = 1; return foo; }'
+assert 6 'if (0) {} else { bar = foo(); bar + 1; }'
+
 echo OK

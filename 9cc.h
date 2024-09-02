@@ -42,6 +42,7 @@ typedef enum {
     ND_IF,     // if
     ND_ELSE,   // else  
     ND_BLOCK,  // 複文
+    ND_FUNC,   // function
 } NodeKind;
 
 typedef struct Node Node;
@@ -59,6 +60,9 @@ struct Node {
     Node *els;
 
     Node *next; // 複文用
+
+    char *name; // 関数名
+    int name_len; // 関数名の長さ
 };
 
 Node *new_node(NodeKind kind);

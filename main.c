@@ -19,6 +19,17 @@ int main(int argc, char **argv) {
     // アセンブリの前半部分を出力
     printf(".intel_syntax noprefix\n");
     printf(".globl main\n");
+    // 関数呼び出しテスト用のアセンブリ foo() { return 5; }
+    printf("foo:\n");
+    printf("    endbr64\n");
+    printf("    push rbp\n");
+    printf("    mov rbp, rsp\n");
+    printf("    push 5\n");
+    printf("    pop rax\n");
+    printf("    mov rsp, rbp\n");
+    printf("    pop rbp\n");
+    printf("    ret\n");
+    // main関数の定義
     printf("main:\n");
 
     // プロローグ
@@ -43,6 +54,9 @@ int main(int argc, char **argv) {
     printf("    ret\n");
     return 0;
 }
+
+// ステップ14から
+// 時間があったら `-=` もサポートしたい
 
 // ## 実行方法
 // `docker run --rm -v $HOME/c/9cc:/9cc -w /9cc compilerbook make test`

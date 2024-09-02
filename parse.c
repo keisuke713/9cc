@@ -354,7 +354,9 @@ Node *unary() {
     return primary();
 }
 
-// primary = num | "(" expr ")"
+// primary = num
+//         | ident ( "(" ")")
+//         | "(" expr ")"
 Node *primary() {
     // 次のトークンが"("なら、"(" expr ")"のはず
     if (consume("(")) {
@@ -365,6 +367,17 @@ Node *primary() {
 
     Token *tok = consume_ident();
     if (tok) {
+        // 関数呼び出しの場合
+        if (token != NULL && memcmp(token->str, "(", token->len) == 0 && token->next != NULL && memcmp(token->next->str, ")", token->next->len) == 0){
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_FUNC;
+
+            node->name = tok->str;
+            node->name_len = tok->len;
+            token = token->next->next;
+
+            return node;
+        }
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
 

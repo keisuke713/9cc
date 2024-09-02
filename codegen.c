@@ -68,6 +68,10 @@ void gen(Node *node) {
             node = node->next;
         }
         return;
+    case ND_FUNC:
+        printf("    call %.*s\n", node->name_len, node->name);
+        printf("    push rax\n"); // 関数の戻り値をスタックに積む
+        return;
     }
 
 
