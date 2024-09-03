@@ -29,6 +29,19 @@ int main(int argc, char **argv) {
     printf("    mov rsp, rbp\n");
     printf("    pop rbp\n");
     printf("    ret\n");
+    // 関数呼び出しテスト用のアセンブリ bar(int num1, int num2) { return num1 + num2; }
+    printf("bar:\n");
+    printf("    endbr64\n");
+    printf("    push rbp\n");
+    printf("    mov rbp, rsp\n");
+    printf("    push rdi\n");
+    printf("    push rsi\n");
+    printf("    pop rdi\n");
+    printf("    pop rax\n");
+    printf("    add rax, rdi\n");
+    printf("    mov rsp, rbp\n");
+    printf("    pop rbp\n");
+    printf("    ret\n");
     // main関数の定義
     printf("main:\n");
 

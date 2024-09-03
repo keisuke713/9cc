@@ -69,6 +69,39 @@ void gen(Node *node) {
         }
         return;
     case ND_FUNC:
+        int n_args = 0;
+        Node *cur = node->args;
+        while (cur) {
+            n_args++;
+            gen(cur);
+            cur = cur->next;
+        }
+
+        // 右側の引数からレジスタにコピーしていく
+        // rdi, rsi, rdx, rcx, r8, r9
+        for (int n_order=n_args; n_order>0; n_order--) {
+            printf("    pop rax\n");
+            switch (n_order) {
+            case 1:
+                printf("    mov rdi, rax\n");
+                break;
+            case 2:
+                printf("    mov rsi, rax\n");
+                break;
+            case 3:
+                printf("    mov rdx, rax\n");
+                break;
+            case 4:
+                printf("    mov rcx, rax\n");
+                break;
+            case 5:
+                printf("    mov r8, rax\n");
+                break;
+            case 6:
+                printf("    mov r9, rax\n");
+                break;
+            }
+        }
         printf("    call %.*s\n", node->name_len, node->name);
         printf("    push rax\n"); // 関数の戻り値をスタックに積む
         return;

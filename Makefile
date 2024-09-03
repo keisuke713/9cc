@@ -13,4 +13,10 @@ test: 9cc
 clean:
 	rm -f 9cc *.o *~ tmp*
 
+gdb: 9cc
+	gdb ./9cc
+
+tmp:
+	gcc -static -g -o tmp tmp.s
+
 .PHONY: test clean

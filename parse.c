@@ -192,7 +192,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{}", *p) != NULL) {
+        if (strchr("+-*/()<>=;{},", *p) != NULL) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -358,23 +358,29 @@ Node *unary() {
 //         | ident ( "(" ")")
 //         | "(" expr ")"
 Node *primary() {
-    // 次のトークンが"("なら、"(" expr ")"のはず
-    if (consume("(")) {
-        Node *node = expr();
-        expect(")");
-        return node;
-    }
 
     Token *tok = consume_ident();
     if (tok) {
-        // 関数呼び出しの場合
-        if (token != NULL && memcmp(token->str, "(", token->len) == 0 && token->next != NULL && memcmp(token->next->str, ")", token->next->len) == 0){
+        // 関数呼び出しの場合(識別子の次のトークンが'('かどうかで判断する)
+        if (consume("(")) {
             Node *node = calloc(1, sizeof(Node));
             node->kind = ND_FUNC;
 
             node->name = tok->str;
             node->name_len = tok->len;
-            token = token->next->next;
+
+            Node *dummyHead = calloc(1, sizeof(Node));
+            Node *curr = dummyHead;
+
+            while (!consume(")")) {
+                curr->next = assign();
+                curr = curr->next;
+
+                // (1)ならそのままトークンはそのまま ')' だし
+                // (1,2)ならトークンは '2' になる
+                consume(",");
+            }
+            node->args = dummyHead->next;
 
             return node;
         }
@@ -396,6 +402,13 @@ Node *primary() {
             node->offset = lvar->offset;
             locals = lvar;
         }
+        return node;
+    }
+
+    // 現時点のトークンが識別子以外かつ次のトークンが"("なら、"(" expr ")"のはず
+    if (consume("(")) {
+        Node *node = expr();
+        expect(")");
         return node;
     }
 

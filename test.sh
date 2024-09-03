@@ -81,4 +81,9 @@ assert 7 'foo() + 2;'
 assert 5 'if (1) { return foo(); } else { foo = 1; return foo; }'
 assert 6 'if (0) {} else { bar = foo(); bar + 1; }'
 
+assert 3 'return bar(1, 2);'
+assert 3 'foo = 1; bar = 2; return bar(1, 2);'
+assert 6 'foo = 1; return bar(foo(), foo);'
+assert 10 'return bar(1, (1 + 2)*3);'
+
 echo OK

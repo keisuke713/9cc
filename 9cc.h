@@ -63,6 +63,8 @@ struct Node {
 
     char *name; // 関数名
     int name_len; // 関数名の長さ
+
+    Node *args; // 関数の引数
 };
 
 Node *new_node(NodeKind kind);
