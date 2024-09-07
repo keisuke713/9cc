@@ -213,6 +213,7 @@ Token *tokenize(char *p) {
 }
 
 void program();
+Node *func();
 Node *stmt();
 Node *expr();
 Node *assign();
@@ -225,13 +226,65 @@ Node *primary();
 
 Node *code[100];
 
-// program    = stmt*
+// program = func*
 void program() {
     int i = 0;
     while (!at_eof()) {
-        code[i++] = stmt();
+        // code[i++] = stmt();
+        code[i++] = func();
     }
     code[i] = NULL;
+}
+
+// func = stmt*
+Node *func() {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_FUNC;
+    Token *tok = consume_ident();
+    if (!tok) {
+        error_at(token->str, "関数名ではありません");
+    } 
+    node->name = tok->str;
+    node->name_len = tok->len;
+    if (!consume("(")) {
+        error_at(token->str, "'('ではありません");
+    }
+    // 引数のセット
+    Node *arguDummy = calloc(1, sizeof(Node));
+    Node *curr = arguDummy;
+    int n_args = 1;
+    // ローカル変数を管理する構造体を初期化
+    locals = new_lvar(NULL, "dummy", 0, 0);
+    while (!consume(")")) {
+        Token *tok = consume_ident();
+        if (tok) {
+            LVar *lvar = find_lvar(tok);
+            Node *arg = calloc(1, sizeof(Node));
+            if (lvar) {
+                arg->offset = lvar->offset;
+            } else {
+                lvar = calloc(1, sizeof(LVar));
+                lvar->next = locals;
+                lvar->name = tok->str;
+                lvar->len = tok->len;
+                lvar->offset = locals->offset + 8;
+                arg->offset = lvar->offset;
+                locals = lvar;
+            }
+            curr->next = arg;
+            curr = curr->next;
+        }
+
+        // (1)ならトークンはそのまま ')' だし
+        // (1, 2)ならトークンは '2' になる
+        consume(",");
+    }
+    node->args = arguDummy->next;
+    if (token->next != NULL && !(memcmp(token->str, "{", token->len)))
+        // 関数本体がブロックじゃないケースある？？
+        // 関数呼び出しで次が ';' になるケースとかか
+        node->body = stmt();
+    return node;
 }
 
 // stmt       = expr ";"
@@ -364,7 +417,7 @@ Node *primary() {
         // 関数呼び出しの場合(識別子の次のトークンが'('かどうかで判断する)
         if (consume("(")) {
             Node *node = calloc(1, sizeof(Node));
-            node->kind = ND_FUNC;
+            node->kind = ND_CALL;
 
             node->name = tok->str;
             node->name_len = tok->len;
@@ -391,9 +444,6 @@ Node *primary() {
         if (lvar) {
             node->offset = lvar->offset;
         } else {
-            if (!locals) {
-                locals = new_lvar(NULL, "dummy", 0, 0);
-            }
             lvar = calloc(1, sizeof(LVar));
             lvar->next = locals;
             lvar->name = tok->str;
