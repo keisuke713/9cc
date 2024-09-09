@@ -44,6 +44,8 @@ typedef enum {
     ND_BLOCK,  // 複文
     ND_CALL,   // 関数呼び出し
     ND_FUNC,   // 関数定義
+    ND_ADDR,   // アドレス
+    ND_DEREF,  // アドレス参照
 } NodeKind;
 
 typedef struct Node Node;

@@ -97,4 +97,13 @@ assert 6 'foo(x) { y = 5; x * y; } main() { y = 1; foo(1) + y; }'
 
 assert 6 "sum(x) { if (x == 1) { return 1; } x + sum(x - 1); } main() { sum(3); }"
 
+assert 5 "main() { x = 5; y = &x; *y; }"
+assert 8 "main() { x = 5; y = &x; *y + 3; }"
+assert 5 "main() { x = 5; y = 1; z = &y + 8; *z; }"
+assert 2 "main() { x = 5; y = &x; *y = 2; x; }"
+
+# 次はステップ17でっせ
+# assert 1 "int main() { int x; x = 1; x; }"
+# 上記全てのテストに戻り値の型とint型の宣言を追加する
+
 echo OK

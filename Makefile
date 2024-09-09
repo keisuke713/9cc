@@ -19,4 +19,4 @@ gdb: 9cc
 tmp:
 	gcc -static -g -o tmp tmp.s
 
-.PHONY: test clean
+.PHONY: test clean tmp
