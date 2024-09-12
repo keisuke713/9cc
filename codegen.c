@@ -182,6 +182,9 @@ void gen(Node *node) {
             printf("    mov rax, [rax]\n");
             printf("    push rax\n");
             return;
+        case ND_DECL:
+            // 構文木側で変数の宣言とメモリの確保は完了しているので何もしない
+            return;
     }
 
 

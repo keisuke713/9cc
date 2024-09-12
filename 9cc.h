@@ -37,6 +37,7 @@ typedef enum {
     ND_LE,     // <=
     ND_NUM,    // number
     ND_ASSIGN, // =
+    ND_DECL,   // 宣言
     ND_LVAR,   // local variable
     ND_RETURN, // return statement
     ND_IF,     // if

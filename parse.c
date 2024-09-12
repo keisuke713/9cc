@@ -155,6 +155,12 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "int", 3) == 0 && !is_alnum(p[3])) {
+            cur = new_token(TK_RESERVED, cur, "int", 3);
+            p += 3;
+            continue;
+        }
+
         if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
             cur = new_token(TK_RESERVED, cur, "return", 6);
             p += 6;
@@ -240,6 +246,8 @@ void program() {
 Node *func() {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FUNC;
+    if (!(consume("int")))
+        error_at(token->str, "型定義ではありません");
     Token *tok = consume_ident();
     if (!tok) {
         error_at(token->str, "関数名ではありません");
@@ -256,6 +264,9 @@ Node *func() {
     // ローカル変数を管理する構造体を初期化
     locals = new_lvar(NULL, "dummy", 0, 0);
     while (!consume(")")) {
+        if (!consume("int"))
+            error_at(token->str, "型定義ではありません");
+
         Token *tok = consume_ident();
         if (tok) {
             LVar *lvar = find_lvar(tok);
@@ -419,6 +430,30 @@ Node *unary() {
 //         | ident ( "(" ")")
 //         | "(" expr ")"
 Node *primary() {
+    if (consume("int")) {
+        Token *tok = consume_ident();
+        if (tok) {
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_DECL;
+
+            LVar *lvar = find_lvar(tok);
+
+            if (lvar) {
+                error_at(token->str, "すでに使用されている識別子です");
+            }
+
+            lvar = calloc(1, sizeof(LVar));
+            lvar->next = locals;
+            lvar->name = tok->str;
+            lvar->len = tok->len;
+            lvar->offset = locals->offset + 8;
+            node->offset = lvar->offset;
+            locals = lvar;
+
+            return node;
+        }
+        error_at(token->str, "識別子ではありません");
+    }
 
     Token *tok = consume_ident();
     if (tok) {
@@ -437,7 +472,7 @@ Node *primary() {
                 curr->next = assign();
                 curr = curr->next;
 
-                // (1)ならそのままトークンはそのまま ')' だし
+                // (1)ならトークンはそのまま ')' だし
                 // (1,2)ならトークンは '2' になる
                 consume(",");
             }
@@ -452,13 +487,8 @@ Node *primary() {
         if (lvar) {
             node->offset = lvar->offset;
         } else {
-            lvar = calloc(1, sizeof(LVar));
-            lvar->next = locals;
-            lvar->name = tok->str;
-            lvar->len = tok->len;
-            lvar->offset = locals->offset + 8; 
-            node->offset = lvar->offset;
-            locals = lvar;
+            // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
+            error_at(token->str, "宣言されていません");
         }
         return node;
     }
