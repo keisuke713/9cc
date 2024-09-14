@@ -97,13 +97,19 @@ assert 6 'int foo(int x) { int y; y = 5; x * y; } int main() { int y; y = 1; foo
 
 assert 6 "int sum(int x) { if (x == 1) { return 1; } x + sum(x - 1); } int main() { sum(3); }"
 
-# TODO ポインタ型導入後型宣言の修正必要
-assert 5 "int main() { int x; int y; x = 5; y = &x; *y; }"
-assert 8 "int main() { int x; int y; x = 5; y = &x; *y + 3; }"
-assert 5 "int main() { int x; int y; int z; x = 5; y = 1; z = &y + 8; *z; }"
-assert 2 "int main() { int x; int y; x = 5; y = &x; *y = 2; x; }"
+assert 5 "int main() { int x; int *y; x = 5; y = &x; *y; }"
+assert 8 "int main() { int x; int *y; x = 5; y = &x; *y + 3; }"
+assert 5 "int main() { int x; int y; int *z; x = 5; y = 1; z = &y + 8; *z; }"
+assert 2 "int main() { int x; int *y; x = 5; y = &x; *y = 2; x; }"
 
 assert 1 "int main() {  int x; x = 1; x; }"
 assert 2 "int twice(int num) { num * 2; } int main() { int x; x = 1; twice(x); }"
+
+assert 5 "int main() { int x; int *y; y = &x; *y = 5; x; }"
+assert 4 "int main() { int x; int *y; x = 4; y = &x; *y; }"
+assert 5 "int main() { int x; int *y; int **z; x = 5; y = &x; z = &y; **z; }"
+assert 2 "int main() { int x; int xx; x = 1; xx = 2; int *y; int **z; y = &x; z = &y; *z = &xx; **z; }"
+assert 1 "int foo(int *x) { *x = 1; } int main() { int x; x = 2; foo(&x); x; }"
+assert 3 "int foo(int *x, int y) { *x = 1 + y; } int main() { int x; x = 1; foo(&x, 2); x; }"
 
 echo OK

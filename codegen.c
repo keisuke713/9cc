@@ -9,6 +9,14 @@ void gen_lval(Node *node) {
     // アドレスに書き込みを行いたいので参照してをstackに積む
     if (node->kind == ND_DEREF) {
         gen(node->lhs);
+        Type *t = node->ty->ptr_to;
+        while (t && t->ty == PTR) {
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
+
+            t = t->ptr_to;
+        }
         return;
     }
 
@@ -70,7 +78,7 @@ void gen(Node *node) {
             while (node) {
                 gen(node);
 
-                if (node->next)
+                if (node->next && node->kind != ND_DECL)
                     printf("    pop rax \n");
 
                 node = node->next;
@@ -178,9 +186,16 @@ void gen(Node *node) {
             return;
         case ND_DEREF:
             gen(node->lhs);
-            printf("    pop rax\n");
-            printf("    mov rax, [rax]\n");
-            printf("    push rax\n");
+            // rootのnodeのみ型を持つのでそれ以外はリターン
+            if (node->ty == NULL)
+                return;
+            Type *t = node->ty->ptr_to;
+            while (t) {
+                printf("    pop rax\n");
+                printf("    mov rax, [rax]\n");
+                printf("    push rax\n");
+                t = t->ptr_to;
+            }
             return;
         case ND_DECL:
             // 構文木側で変数の宣言とメモリの確保は完了しているので何もしない

@@ -267,6 +267,8 @@ Node *func() {
         if (!consume("int"))
             error_at(token->str, "型定義ではありません");
 
+        // 変数宣言の段階ではポインタかどうかは特に気にしなくて良い
+        while(consume("*")) {}
         Token *tok = consume_ident();
         if (tok) {
             LVar *lvar = find_lvar(tok);
@@ -419,8 +421,15 @@ Node *unary() {
         return unary();
     if (consume("-"))
         return new_binary(ND_SUB, new_num(0), unary());
-    if (consume("*"))
-        return new_binary(ND_DEREF, unary(),NULL);
+    if (consume("*")){
+        Node *node = new_binary(ND_DEREF, unary(),NULL);
+        Type *ptr = calloc(1, sizeof(Type));
+        ptr->ty = PTR;
+        ptr->ptr_to = node->lhs->ty;
+        node->lhs->ty = NULL;
+        node->ty = ptr;
+        return node;
+    }
     if (consume("&"))
         return new_binary(ND_ADDR, unary(), NULL);
     return primary();
@@ -431,6 +440,8 @@ Node *unary() {
 //         | "(" expr ")"
 Node *primary() {
     if (consume("int")) {
+        // 変数宣言の段階ではポインタかどうかは特に気にしなくて良い
+        while(consume("*")) {}
         Token *tok = consume_ident();
         if (tok) {
             Node *node = calloc(1, sizeof(Node));
@@ -482,6 +493,11 @@ Node *primary() {
         }
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
+
+        Type *intTy = calloc(1, sizeof(Type));
+        intTy->ty = INT;
+
+        node->ty = intTy;
 
         LVar *lvar = find_lvar(tok);
         if (lvar) {

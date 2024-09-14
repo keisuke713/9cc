@@ -49,6 +49,19 @@ typedef enum {
     ND_DEREF,  // アドレス参照
 } NodeKind;
 
+
+typedef enum {
+    INT, // int
+    PTR, // pointer
+} TypeKind;
+
+typedef struct Type Type;
+
+struct Type {
+    TypeKind ty;
+    Type *ptr_to;
+};
+
 typedef struct Node Node;
 
 // 抽象構文木のノードの型
@@ -70,6 +83,8 @@ struct Node {
 
     Node *args; // 関数の引数
     Node *body; // 関数の中身
+
+    Type *ty; // 変数の場合の型
 };
 
 Node *new_node(NodeKind kind);
