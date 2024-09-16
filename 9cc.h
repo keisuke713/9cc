@@ -15,6 +15,18 @@ struct Token {
     int len;        // トークンの長さ
 };
 
+typedef enum {
+    INT, // int
+    PTR, // pointer
+} TypeKind;
+
+typedef struct Type Type;
+
+struct Type {
+    TypeKind kind;
+    Type *ptr_to;
+};
+
 typedef struct LVar LVar;
 
 // ローカル変数の型
@@ -23,6 +35,8 @@ struct LVar {
     char *name; // 変数の名前
     int len;    // 名前の長さ
     int offset; // RBPからのオフセット
+    Type *ty; // 型情報
+    int n_ptr; //ポインタがいくつ繋がっているか
 };
 
 // 抽象構文木のノードの種類
@@ -48,19 +62,6 @@ typedef enum {
     ND_ADDR,   // アドレス
     ND_DEREF,  // アドレス参照
 } NodeKind;
-
-
-typedef enum {
-    INT, // int
-    PTR, // pointer
-} TypeKind;
-
-typedef struct Type Type;
-
-struct Type {
-    TypeKind ty;
-    Type *ptr_to;
-};
 
 typedef struct Node Node;
 

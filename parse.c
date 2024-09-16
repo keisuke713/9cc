@@ -266,9 +266,17 @@ Node *func() {
     while (!consume(")")) {
         if (!consume("int"))
             error_at(token->str, "型定義ではありません");
-
-        // 変数宣言の段階ではポインタかどうかは特に気にしなくて良い
-        while(consume("*")) {}
+        Type *intTy = calloc(1, sizeof(Type));
+        intTy->kind = INT;
+        Type *currTy = intTy;
+        int n_ptr = 0;
+        while(consume("*")) {
+            Type *ptrTy = calloc(1, sizeof(Type));
+            ptrTy->kind = PTR;
+            ptrTy->ptr_to = currTy;
+            currTy = ptrTy;
+            n_ptr++;
+        }
         Token *tok = consume_ident();
         if (tok) {
             LVar *lvar = find_lvar(tok);
@@ -281,6 +289,8 @@ Node *func() {
                 lvar->name = tok->str;
                 lvar->len = tok->len;
                 lvar->offset = locals->offset + 8;
+                lvar->ty = currTy;
+                lvar->n_ptr = n_ptr;
                 arg->offset = lvar->offset;
                 locals = lvar;
             }
@@ -416,19 +426,15 @@ Node *mul() {
 //       | "-"? primary
 //       | "*? primary
 //       | "&"? primary
+int n_deref = 0;;
 Node *unary() {
     if (consume("+"))
         return unary();
     if (consume("-"))
         return new_binary(ND_SUB, new_num(0), unary());
     if (consume("*")){
-        Node *node = new_binary(ND_DEREF, unary(),NULL);
-        Type *ptr = calloc(1, sizeof(Type));
-        ptr->ty = PTR;
-        ptr->ptr_to = node->lhs->ty;
-        node->lhs->ty = NULL;
-        node->ty = ptr;
-        return node;
+        n_deref++;
+        return new_binary(ND_DEREF, unary(), NULL);
     }
     if (consume("&"))
         return new_binary(ND_ADDR, unary(), NULL);
@@ -440,8 +446,17 @@ Node *unary() {
 //         | "(" expr ")"
 Node *primary() {
     if (consume("int")) {
-        // 変数宣言の段階ではポインタかどうかは特に気にしなくて良い
-        while(consume("*")) {}
+        Type *intTy = calloc(1, sizeof(Type));
+        intTy->kind = INT;
+        Type *curr = intTy;
+        int n_ptr = 0;
+        while(consume("*")) {
+            Type *ptrTy = calloc(1, sizeof(Type));
+            ptrTy->kind = PTR;
+            ptrTy->ptr_to = curr;
+            curr = ptrTy;
+            n_ptr++;
+        }
         Token *tok = consume_ident();
         if (tok) {
             Node *node = calloc(1, sizeof(Node));
@@ -458,6 +473,8 @@ Node *primary() {
             lvar->name = tok->str;
             lvar->len = tok->len;
             lvar->offset = locals->offset + 8;
+            lvar->ty = curr;
+            lvar->n_ptr = n_ptr;
             node->offset = lvar->offset;
             locals = lvar;
 
@@ -494,18 +511,29 @@ Node *primary() {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
 
-        Type *intTy = calloc(1, sizeof(Type));
-        intTy->ty = INT;
-
-        node->ty = intTy;
-
         LVar *lvar = find_lvar(tok);
         if (lvar) {
             node->offset = lvar->offset;
+            int lvar_n_ty = lvar->n_ptr;
+            Type *lvar_ty = lvar->ty;
+            while (n_deref < lvar_n_ty--) {
+                lvar_ty = lvar_ty->ptr_to;
+            }
+            Type *type_dummy = calloc(1, sizeof(Type));
+            Type *curr = type_dummy;
+            while(lvar_ty) {
+                Type *ty = calloc(1, sizeof(Type));
+                ty->kind = lvar_ty->kind;
+                curr->ptr_to = ty;
+                curr = curr->ptr_to;
+                lvar_ty = lvar_ty->ptr_to;
+            }
+            node->ty = type_dummy->ptr_to;
         } else {
             // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
             error_at(token->str, "宣言されていません");
         }
+        n_deref = 0;
         return node;
     }
 

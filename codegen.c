@@ -5,27 +5,25 @@
 
 // 書き込み先のアドレスをpushする
 void gen_lval(Node *node) {
-    // ポインタの場合は該当アドレスに書き込まれている
-    // アドレスに書き込みを行いたいので参照してをstackに積む
-    if (node->kind == ND_DEREF) {
-        gen(node->lhs);
-        Type *t = node->ty->ptr_to;
-        while (t && t->ty == PTR) {
-            printf("    pop rax\n");
-            printf("    mov rax, [rax]\n");
-            printf("    push rax\n");
-
-            t = t->ptr_to;
-        }
-        return;
-    }
-
-    if (node->kind != ND_LVAR)
+    if (node->kind != ND_LVAR && node->kind != ND_DEREF)
         error("代入の左辺値が変数ではありません");
 
+    Node *lvar = node;
+    while (lvar->kind != ND_LVAR) {
+        lvar = lvar->lhs;
+    }
+
     printf("    mov rax, rbp\n");
-    printf("    sub rax, %d\n", node->offset);
+    printf("    sub rax, %d \n", lvar->offset);
     printf("    push rax\n");
+
+    Type *ty = lvar->ty;
+    while (ty->ptr_to) {
+        printf("    pop rax\n");
+        printf("    mov rax, [rax]\n");
+        printf("    push rax\n");
+        ty = ty->ptr_to;
+    }
 }
 
 int n_label = 0;
@@ -186,16 +184,7 @@ void gen(Node *node) {
             return;
         case ND_DEREF:
             gen(node->lhs);
-            // rootのnodeのみ型を持つのでそれ以外はリターン
-            if (node->ty == NULL)
-                return;
-            Type *t = node->ty->ptr_to;
-            while (t) {
-                printf("    pop rax\n");
-                printf("    mov rax, [rax]\n");
-                printf("    push rax\n");
-                t = t->ptr_to;
-            }
+
             return;
         case ND_DECL:
             // 構文木側で変数の宣言とメモリの確保は完了しているので何もしない
