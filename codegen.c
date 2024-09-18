@@ -5,25 +5,19 @@
 
 // 書き込み先のアドレスをpushする
 void gen_lval(Node *node) {
-    if (node->kind != ND_LVAR && node->kind != ND_DEREF)
+    // ポインタの場合は該当アドレスに書き込まれている
+    // アドレスを参照してをstackに積む
+    if (node->kind == ND_DEREF) {
+        gen(node);
+        return;
+    }
+
+    if (node->kind != ND_LVAR)
         error("代入の左辺値が変数ではありません");
 
-    Node *lvar = node;
-    while (lvar->kind != ND_LVAR) {
-        lvar = lvar->lhs;
-    }
-
     printf("    mov rax, rbp\n");
-    printf("    sub rax, %d \n", lvar->offset);
+    printf("    sub rax, %d \n", node->offset);
     printf("    push rax\n");
-
-    Type *ty = lvar->ty;
-    while (ty->ptr_to) {
-        printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
-        printf("    push rax\n");
-        ty = ty->ptr_to;
-    }
 }
 
 int n_label = 0;
@@ -184,14 +178,19 @@ void gen(Node *node) {
             return;
         case ND_DEREF:
             gen(node->lhs);
+            // 下記のメモリコピーはポインタの指すアドレスの中身を参照したい時のみ、
+            // つまりポインタが左辺値として使われる場合は必要ない
+            if (node->is_lefthand)
+                return;
 
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
             return;
         case ND_DECL:
             // 構文木側で変数の宣言とメモリの確保は完了しているので何もしない
             return;
     }
-
-
 
     gen(node->lhs);
     gen(node->rhs);

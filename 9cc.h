@@ -85,7 +85,7 @@ struct Node {
     Node *args; // 関数の引数
     Node *body; // 関数の中身
 
-    Type *ty; // 変数の場合の型
+    int is_lefthand; // 代入先かどうか
 };
 
 Node *new_node(NodeKind kind);

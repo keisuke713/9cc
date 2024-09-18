@@ -102,7 +102,8 @@ assert 6 "int sum(int x) { if (x == 1) { return 1; } x + sum(x - 1); } int main(
 assert 5 "int main() { int x; int *y; x = 5; y = &x; *y; }"
 assert 8 "int main() { int x; int *y; x = 5; y = &x; *y + 3; }"
 assert 5 "int main() { int x; int y; int *z; x = 5; y = 1; z = &y + 8; *z; }"
-assert 2 "int main() { int x; int *y; x = 5; y = &x; *y = 2; x; }" # this
+assert 2 "int main() { int x; int *y; x = 5; y = &x; *y = 2; x; }"
+assert 1 "int *foo() {int x; x = 1; &x; } int main() { *(foo()); }"
 
 
 assert 5 "int main() { int x; int *y; y = &x; *y = 5; x; }"

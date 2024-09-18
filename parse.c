@@ -236,7 +236,6 @@ Node *code[100];
 void program() {
     int i = 0;
     while (!at_eof()) {
-        // code[i++] = stmt();
         code[i++] = func();
     }
     code[i] = NULL;
@@ -248,6 +247,8 @@ Node *func() {
     node->kind = ND_FUNC;
     if (!(consume("int")))
         error_at(token->str, "型定義ではありません");
+    // TODO 戻り値の型を把握するようにする
+    while(consume("*")) {}
     Token *tok = consume_ident();
     if (!tok) {
         error_at(token->str, "関数名ではありません");
@@ -356,8 +357,10 @@ Node *expr() {
 // assign     = equality ("=" assign)?
 Node *assign() {
     Node *node = equality();
-    if (consume("="))
+    if (consume("=")) {
+        node->is_lefthand = 1;
         node = new_binary(ND_ASSIGN, node, assign());
+    }
     return node;
 }
 
@@ -514,21 +517,9 @@ Node *primary() {
         LVar *lvar = find_lvar(tok);
         if (lvar) {
             node->offset = lvar->offset;
-            int lvar_n_ty = lvar->n_ptr;
-            Type *lvar_ty = lvar->ty;
-            while (n_deref < lvar_n_ty--) {
-                lvar_ty = lvar_ty->ptr_to;
+            if (n_deref > lvar->n_ptr) {
+                error_at(token->str, "逆参照できません");
             }
-            Type *type_dummy = calloc(1, sizeof(Type));
-            Type *curr = type_dummy;
-            while(lvar_ty) {
-                Type *ty = calloc(1, sizeof(Type));
-                ty->kind = lvar_ty->kind;
-                curr->ptr_to = ty;
-                curr = curr->ptr_to;
-                lvar_ty = lvar_ty->ptr_to;
-            }
-            node->ty = type_dummy->ptr_to;
         } else {
             // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
             error_at(token->str, "宣言されていません");
