@@ -86,6 +86,7 @@ struct Node {
     Node *body; // 関数の中身
 
     int is_lefthand; // 代入先かどうか
+    int original_n_size; // 元々の型のサイズ. 何bitのレジスタを使うか判断するために使う
 };
 
 Node *new_node(NodeKind kind);

@@ -289,10 +289,17 @@ Node *func() {
                 lvar->next = locals;
                 lvar->name = tok->str;
                 lvar->len = tok->len;
-                lvar->offset = locals->offset + 8;
+                int n_offset = 4;
+                if (currTy->kind == PTR)
+                    n_offset = 8;
+                lvar->offset = locals->offset + n_offset;
                 lvar->ty = currTy;
                 lvar->n_ptr = n_ptr;
                 arg->offset = lvar->offset;
+                int n_original_size = 4;
+                if (currTy->kind == PTR)
+                    n_original_size = 8;
+                arg->original_n_size = n_original_size;
                 locals = lvar;
             }
             curr->next = arg;
@@ -475,7 +482,10 @@ Node *primary() {
             lvar->next = locals;
             lvar->name = tok->str;
             lvar->len = tok->len;
-            lvar->offset = locals->offset + 8;
+            int n_offset = 4;
+            if (curr->kind == PTR)
+                n_offset = 8;
+            lvar->offset = locals->offset + n_offset;
             lvar->ty = curr;
             lvar->n_ptr = n_ptr;
             node->offset = lvar->offset;
@@ -517,6 +527,10 @@ Node *primary() {
         LVar *lvar = find_lvar(tok);
         if (lvar) {
             node->offset = lvar->offset;
+            if (lvar->ty->kind == PTR)
+                node->original_n_size = 8;
+            else
+                node->original_n_size = 4;
             if (n_deref > lvar->n_ptr) {
                 error_at(token->str, "逆参照できません");
             }

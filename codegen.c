@@ -3,6 +3,13 @@
 
 #include "9cc.h"
 
+// Nodeのデータが4byteの場合32bitレジスタ、そうでない場合は64bitレジスタを使いたいため
+char gen_prefix_register(Node *node) {
+    if (node->original_n_size == 4)
+        return 'e';
+    return 'r';
+}
+
 // 書き込み先のアドレスをpushする
 void gen_lval(Node *node) {
     // ポインタの場合は該当アドレスに書き込まれている
@@ -33,7 +40,7 @@ void gen(Node *node) {
         case ND_LVAR:
             gen_lval(node);
             printf("    pop rax\n");
-            printf("    mov rax, [rax]\n");
+            printf("    mov %cax, [rax]\n", gen_prefix_register(node));
             printf("    push rax\n");
             return;
         case ND_ASSIGN:
@@ -42,7 +49,7 @@ void gen(Node *node) {
 
             printf("    pop rdi\n");
             printf("    pop rax\n");
-            printf("    mov [rax], rdi\n");
+            printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
             printf("    push rdi\n");
             return;
         case ND_RETURN:
@@ -159,7 +166,7 @@ void gen(Node *node) {
                 // popして該当のアドレスに変数の値を入れる
                 printf("    pop rax\n"); // アドレスが入る
                 printf("    pop rdi\n"); // 変数の値が入る
-                printf("    mov [rax], rdi\n");
+                printf("    mov [rax], %cdi\n", gen_prefix_register(curr_arg));
                 printf("    push rdi\n");
 
                 curr_arg = curr_arg->next;

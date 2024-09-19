@@ -101,7 +101,7 @@ assert 6 "int sum(int x) { if (x == 1) { return 1; } x + sum(x - 1); } int main(
 
 assert 5 "int main() { int x; int *y; x = 5; y = &x; *y; }"
 assert 8 "int main() { int x; int *y; x = 5; y = &x; *y + 3; }"
-assert 5 "int main() { int x; int y; int *z; x = 5; y = 1; z = &y + 8; *z; }"
+assert 5 "int main() { int x; int y; int *z; x = 5; y = 1; z = &y + 4; *z; }"
 assert 2 "int main() { int x; int *y; x = 5; y = &x; *y = 2; x; }"
 assert 1 "int *foo() {int x; x = 1; &x; } int main() { *(foo()); }"
 
@@ -114,6 +114,13 @@ assert 2 "int main() { int x; int xx; x = 1; xx = 2; int *y; int **z; y = &x; z 
 assert 1 "int foo(int *x) { *x = 1; } int main() { int x; x = 2; foo(&x); x; }"
 assert 3 "int foo(int *x, int y) { *x = 1 + y; } int main() { int x; x = 1; foo(&x, 2); x; }"
 assert 2 "int foo(int **x, int *y) { *x = y; } int main() { int x; int xx; int *y; int **z; x = 1; x = 2; y = &x; z = &y; foo(z, &x2); **z; }"
-assert 1 "int foo(int **x, int y) { **x = y; } int main() { int x; int y; x = 2; y = &x; foo(&y, 1); x; }"
+assert 1 "int foo(int **x, int y) { **x = y; } int main() { int x; int *y; x = 2; y = &x; foo(&y, 1); x; }"
+
+ポインタ加減算
+stack popしてもいいかもね
+
+それかバイナリ作る時のうざい警告直す
+/usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack
+/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker
 
 echo OK
