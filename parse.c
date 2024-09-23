@@ -7,16 +7,24 @@
 
 #include "9cc.h"
 
+Type *new_type(TypeKind kind, Type *ptr_to) {
+    Type *ty = calloc(1, sizeof(Type));
+    ty->kind = kind;
+    ty->ptr_to = ptr_to;
+    return ty;
+}
+
 Node *new_node(NodeKind kind) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     return node;
 }
 
-Node *new_binary(NodeKind kind, Node *lhs, Node *rhs) {
+Node *new_binary(NodeKind kind, Node *lhs, Node *rhs, Type *ty) {
     Node *node = new_node(kind);
     node->lhs = lhs;
     node->rhs = rhs;
+    node->ty = ty;
     return node;
 }
 
@@ -24,6 +32,7 @@ Node *new_num(int val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
+    node->ty = new_type(INT, NULL);
     return node;
 }
 
@@ -46,6 +55,10 @@ void error_at(char *loc, char *fmt, ...) {
 // 現在着目しているトークン
 // extern Token *token;
 Token *token;
+
+Func *new_func(Func *next, char *name, int len, Type *res_type);
+// 定義されている関数群
+Func *funcs;
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset);
 // ローカル変数
@@ -113,6 +126,27 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
 
 bool startswith(char *p, char *q) {
     return memcmp(p, q, strlen(q)) == 0;
+}
+
+Func *new_func(Func *next, char *name, int len, Type *res_type) {
+    Func *func = calloc(1, sizeof(Func));
+    func->next = next;
+    func->name = name;
+    func->len = len;
+    func->res_ty = res_type;
+
+    funcs = func;
+
+    return func;
+}
+
+Func *find_func(Token *tok) {
+    for (Func *var = funcs; var; var = var->next) {
+        if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+            return var;
+    }
+
+    return NULL;
 }
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset) {
@@ -244,17 +278,27 @@ void program() {
 // func = stmt*
 Node *func() {
     Node *node = calloc(1, sizeof(Node));
+    Func *f = find_func(token);
+    if (f) {
+        error_at(token->str, "すでに定義されている関数です");
+    }
     node->kind = ND_FUNC;
     if (!(consume("int")))
         error_at(token->str, "型定義ではありません");
-    // TODO 戻り値の型を把握するようにする
-    while(consume("*")) {}
+    Type *intTy = new_type(INT, NULL);
+    Type *currTy = intTy;
+    while(consume("*")) {
+        Type *ptrTy = new_type(PTR, currTy);
+        currTy = ptrTy;
+    }
     Token *tok = consume_ident();
     if (!tok) {
         error_at(token->str, "関数名ではありません");
     } 
     node->name = tok->str;
     node->name_len = tok->len;
+    node->ty = currTy;
+    Func *func = new_func(funcs, tok->str, tok->len, currTy);
     if (!consume("(")) {
         error_at(token->str, "'('ではありません");
     }
@@ -366,7 +410,7 @@ Node *assign() {
     Node *node = equality();
     if (consume("=")) {
         node->is_lefthand = 1;
-        node = new_binary(ND_ASSIGN, node, assign());
+        node = new_binary(ND_ASSIGN, node, assign(), NULL);
     }
     return node;
 }
@@ -377,9 +421,9 @@ Node *equality() {
 
     for (;;) {
         if (consume("=="))
-            node = new_binary(ND_EQ, node, relational());
+            node = new_binary(ND_EQ, node, relational(), new_type(INT, NULL));
         else if (consume("!="))
-            node = new_binary(ND_NE, node, relational());
+            node = new_binary(ND_NE, node, relational(), new_type(INT, NULL));
         else
             return node;
     }
@@ -391,16 +435,47 @@ Node *relational() {
 
     for (;;) {
         if (consume("<"))
-            node = new_binary(ND_LT, node, add());
+            node = new_binary(ND_LT, node, add(), new_type(INT, NULL));
         else if (consume("<="))
-            node = new_binary(ND_LE, node, add());
+            node = new_binary(ND_LE, node, add(), new_type(INT, NULL));
         else if (consume(">"))
-            node = new_binary(ND_LT, add(), node);
+            node = new_binary(ND_LT, add(), node, new_type(INT, NULL));
         else if (consume(">="))
-            node = new_binary(ND_LE, add(), node);
+            node = new_binary(ND_LE, add(), node, new_type(INT, NULL));
         else
             return node;
     }
+}
+
+// ポインタを加減算する場合数値のノードの値を定数倍する
+// intへのポインタの場合は*4、ポインタのポインタの場合は*8
+Node *overwrite_node(Node *node) {
+    if (node->lhs->ty->kind == PTR) {
+        node->ty = node->lhs->ty;
+
+        int mul;
+        if (node->lhs->ty->ptr_to->kind == INT)
+            mul = 4;
+        else
+            mul = 8;
+        Node *mul_node = new_num(mul);
+        node->rhs = new_binary(ND_MUL, mul_node, node->rhs, new_type(INT, NULL));
+        return node;
+    }
+    if (node->rhs->ty->kind == PTR) {
+        node->ty = node->rhs->ty;
+
+        int mul;
+        if (node->rhs->ty->ptr_to->kind == INT)
+            mul = 4;
+        else
+            mul = 8;
+        Node *mul_node = new_num(mul);
+        node->lhs = new_binary(ND_MUL, node->lhs, mul_node, new_type(INT, NULL));
+        return node;
+    }
+    node->ty = node->lhs->ty;
+    return node;
 }
 
 // add = mul ("+" mul | "-" mul)*
@@ -409,9 +484,9 @@ Node *add() {
 
     for (;;) {
         if (consume("+"))
-            node = new_binary(ND_ADD, node, mul());
+            node = overwrite_node(new_binary(ND_ADD, node, mul(), NULL));
         else if (consume("-"))
-            node = new_binary(ND_SUB, node, mul());
+            node = overwrite_node(new_binary(ND_SUB, node, mul(), NULL));
         else
             return node;
     }
@@ -422,10 +497,24 @@ Node *mul() {
     Node *node = unary();
 
     for (;;) {
-        if (consume("*"))
-            node = new_binary(ND_MUL, node, unary());
-        else if (consume("/"))
-            node = new_binary(ND_DIV, node, unary());
+        if (consume("*")) {
+            node = new_binary(ND_MUL, node, unary(), NULL);
+            if (node->lhs->ty->kind == PTR)
+                node->ty = node->lhs->ty;
+            else if (node->rhs->ty->kind == PTR)
+                node->ty = node->rhs->ty;
+            else
+                node->ty = node->lhs->ty;
+        }
+        else if (consume("/")) {
+            node = new_binary(ND_DIV, node, unary(), NULL);
+            if (node->lhs->ty->kind == PTR)
+                node->ty = node->lhs->ty;
+            else if (node->rhs->ty->kind == PTR)
+                node->ty = node->rhs->ty;
+            else
+                node->ty = node->lhs->ty;
+        }
         else
             return node;
     }
@@ -436,18 +525,27 @@ Node *mul() {
 //       | "-"? primary
 //       | "*? primary
 //       | "&"? primary
-int n_deref = 0;;
 Node *unary() {
-    if (consume("+"))
-        return unary();
-    if (consume("-"))
-        return new_binary(ND_SUB, new_num(0), unary());
-    if (consume("*")){
-        n_deref++;
-        return new_binary(ND_DEREF, unary(), NULL);
+    if (consume("+")) {
+        Node *node = unary();
+        node->ty = new_type(INT, NULL);
+        return node;
     }
-    if (consume("&"))
-        return new_binary(ND_ADDR, unary(), NULL);
+    if (consume("-"))
+        return new_binary(ND_SUB, new_num(0), unary(), new_type(INT, NULL));
+    if (consume("*")) {
+        Node *node = new_binary(ND_DEREF, unary(), NULL, NULL);
+        Type *ty = node->lhs->ty;
+        if (!ty->ptr_to)
+            error_at(token->str, "逆参照できません");
+        node->ty = ty->ptr_to;
+        return node;
+    }
+    if (consume("&")) {
+        Node *node = new_binary(ND_ADDR, unary(0), NULL, NULL);
+        node->ty = new_type(PTR, node->lhs->ty);
+        return node;
+    }
     return primary();
 }
 
@@ -500,11 +598,15 @@ Node *primary() {
     if (tok) {
         // 関数呼び出しの場合(識別子の次のトークンが'('かどうかで判断する)
         if (consume("(")) {
+            Func *func = find_func(tok);
+            if (!func)
+                error_at(tok->str, "定義されていない関数です");
             Node *node = calloc(1, sizeof(Node));
             node->kind = ND_CALL;
 
             node->name = tok->str;
             node->name_len = tok->len;
+            node->ty = func->res_ty;
 
             Node *dummyHead = calloc(1, sizeof(Node));
             Node *curr = dummyHead;
@@ -531,14 +633,11 @@ Node *primary() {
                 node->original_n_size = 8;
             else
                 node->original_n_size = 4;
-            if (n_deref > lvar->n_ptr) {
-                error_at(token->str, "逆参照できません");
-            }
+            node->ty = lvar->ty;
         } else {
             // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
             error_at(token->str, "宣言されていません");
         }
-        n_deref = 0;
         return node;
     }
 

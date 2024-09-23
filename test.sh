@@ -101,7 +101,7 @@ assert 6 "int sum(int x) { if (x == 1) { return 1; } x + sum(x - 1); } int main(
 
 assert 5 "int main() { int x; int *y; x = 5; y = &x; *y; }"
 assert 8 "int main() { int x; int *y; x = 5; y = &x; *y + 3; }"
-assert 5 "int main() { int x; int y; int *z; x = 5; y = 1; z = &y + 4; *z; }"
+assert 5 "int main() { int x; int y; int *z; x = 5; y = 1; z = &y; z = z + 1; *z; }"
 assert 2 "int main() { int x; int *y; x = 5; y = &x; *y = 2; x; }"
 assert 1 "int *foo() {int x; x = 1; &x; } int main() { *(foo()); }"
 
@@ -116,11 +116,28 @@ assert 3 "int foo(int *x, int y) { *x = 1 + y; } int main() { int x; x = 1; foo(
 assert 2 "int foo(int **x, int *y) { *x = y; } int main() { int x; int xx; int *y; int **z; x = 1; x = 2; y = &x; z = &y; foo(z, &x2); **z; }"
 assert 1 "int foo(int **x, int y) { **x = y; } int main() { int x; int *y; x = 2; y = &x; foo(&y, 1); x; }"
 
-ポインタ加減算
-stack popしてもいいかもね
+assert 1 "int main() { int x; int y; int *z; x = 1; y = 2; z = &y; z = z + 1; *z; }"
+assert 1 "int main() { int x; int y; int *z; x = 1; y = 2; z = &y; z = 1 + z; *z; }"
+assert 1 "int main() { int x; int y; int *z; x = 1; y = 2; z = &y; z = z + x; *z; }"
+assert 1 "int main() { int x; int y; int *z; x = 1; y = 2; z = &y; z = x + z; *z; }"
 
-それかバイナリ作る時のうざい警告直す
-/usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack
-/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker
+assert 2 "int main() { int x; int y; int *z; x = 1; y = 2; z = &x; z = z - 1; *z; }"
+assert 2 "int main() { int x; int y; int *z; x = 1; y = 2; z = &x; z = z - x; *z; }"
+assert 1 "int main() {int x; int y; int *z; x = 1; y = 2; z = &y; *(z + 1); }"
+assert 1 "int main() { int x; int xx; int *y; int *yy; int **z; int **zz; x = 1; xx = 2; y = &x; yy = &xx; z = &y; zz = &yy; **(zz + 1); }"
+assert 3 "int main() { int x; int xx; int *y; x = 1; xx = 2; y = &x; *(y - 1) = 3; xx; }"
+assert 3 "int foo(int *x) { *(x+1) = 3; } int main() { int x; int xx; int *y; x = 1; xx = 2; y = &xx;  foo(y); x; }"
+assert 1 "int main() { int foo; int bar; int fuga; foo = 1; bar = 2; fuga = 3; int *y; y = &fuga; *((y + 1) + 1); }"
+assert 1 "int main() { int x; int xx; int *y; int *yy; int **z; int **zz; x = 1; xx = 2; y = &x; yy = &xx; z = &y; zz = &yy; *(*zz + 1); }"
+assert 2 "int main() { int foo; int bar; foo = 1; bar = 2; *(&foo - 1); }"
+
+
+# 最低限セルフホストに必要なところだけ実装するので以下のコードは落ちる多分
+
+# 関数ごとにローカル変数の値管理するようにしないとバグるかも
+
+# バイナリ作る時のうざい警告直す
+# /usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack
+# /usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker
 
 echo OK

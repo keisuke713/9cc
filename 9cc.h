@@ -27,6 +27,16 @@ struct Type {
     Type *ptr_to;
 };
 
+typedef struct Func Func;
+
+// 関数の型
+struct Func {
+    Func *next;
+    char *name;
+    int len;
+    Type *res_ty;
+};
+
 typedef struct LVar LVar;
 
 // ローカル変数の型
@@ -87,10 +97,11 @@ struct Node {
 
     int is_lefthand; // 代入先かどうか
     int original_n_size; // 元々の型のサイズ. 何bitのレジスタを使うか判断するために使う
+    Type *ty;
 };
 
 Node *new_node(NodeKind kind);
-Node *new_binary(NodeKind kind, Node *lhs, Node *rhs);
+Node *new_binary(NodeKind kind, Node *lhs, Node *rhs, Type *ty);
 Node *new_num(int val);
 
 void error_at(char *loc, char *fmt, ...);
