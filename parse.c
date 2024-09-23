@@ -83,6 +83,14 @@ bool consume(char *op) {
     return true;
 }
 
+bool consume_sizeof() {
+    char *op = "sizeof";
+    if (token->kind != TK_SIZEOF || strlen(op) != token->len || memcmp(token->str, op, token->len))
+        return false;
+    token = token->next;
+    return true;
+}
+
 // 次のトークンが識別子の時はトークンを良い進めてそれを返す、それ以外はnil
 Token *consume_ident() {
     if (token->kind != TK_IDENT)
@@ -186,6 +194,12 @@ Token *tokenize(char *p) {
         // 空白文字をスキップ
         if (isspace(*p)) {
             p++;
+            continue;
+        }
+
+        if (strncmp(p, "sizeof", 6) == 0 && !is_alnum(p[6])) {
+            cur = new_token(TK_SIZEOF, cur, "sizeof", 6);
+            p += 6;
             continue;
         }
 
@@ -525,6 +539,7 @@ Node *mul() {
 //       | "-"? primary
 //       | "*? primary
 //       | "&"? primary
+//       | "sizeof" primary
 Node *unary() {
     if (consume("+")) {
         Node *node = unary();
@@ -544,6 +559,14 @@ Node *unary() {
     if (consume("&")) {
         Node *node = new_binary(ND_ADDR, unary(0), NULL, NULL);
         node->ty = new_type(PTR, node->lhs->ty);
+        return node;
+    }
+    if (consume_sizeof()) {
+        Node *node = unary();
+        if (node->ty->kind == INT)
+            node = new_num(4);
+        else
+            node = new_num(8);
         return node;
     }
     return primary();

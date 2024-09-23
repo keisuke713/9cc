@@ -131,10 +131,21 @@ assert 1 "int main() { int foo; int bar; int fuga; foo = 1; bar = 2; fuga = 3; i
 assert 1 "int main() { int x; int xx; int *y; int *yy; int **z; int **zz; x = 1; xx = 2; y = &x; yy = &xx; z = &y; zz = &yy; *(*zz + 1); }"
 assert 2 "int main() { int foo; int bar; foo = 1; bar = 2; *(&foo - 1); }"
 
+assert 4 "int main() { sizeof(1); }"
+assert 4 "int main() { sizeof(1 + 1); }"
+assert 4 "int foo() { 1; } int main() { sizeof(foo()); }"
+assert 8 "int main() { int x; int *y; x = 1; y = &x; sizeof(y); }"
+assert 4 "int main() { int x; sizeof(x); }"
+assert 4 "int main() { int *y; sizeof(*y); }"
+assert 8 "int main() { int *y; sizeof(y); }"
+assert 8 "int main() { int x; int *y; x = 1; y = &x; sizeof(y + 1); }"
+assert 4 "int main() { int x; int *y; x = 1; y = &x; sizeof(*y); }"
+assert 4 "int main() { sizeof(sizeof(1)); }"
+assert 8 "int main() { int **x; sizeof(*x); }"
 
-# 最低限セルフホストに必要なところだけ実装するので以下のコードは落ちる多分
 
-# 関数ごとにローカル変数の値管理するようにしないとバグるかも
+# 最低限セルフホストに必要なところだけ実装する
+# 関数ごとにローカル変数を管理するようにしないとバグるかも
 
 # バイナリ作る時のうざい警告直す
 # /usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack
