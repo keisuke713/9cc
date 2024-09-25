@@ -5,9 +5,9 @@
 
 // Nodeのデータが4byteの場合32bitレジスタ、そうでない場合は64bitレジスタを使いたいため
 char gen_prefix_register(Node *node) {
-    if (node->original_n_size == 4)
-        return 'e';
-    return 'r';
+    if (node->ty == NULL || node->ty->kind == PTR)
+        return 'r';
+    return 'e';
 }
 
 // 書き込み先のアドレスをpushする

@@ -246,7 +246,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{},&", *p) != NULL) {
+        if (strchr("+-*/()<>=;{},&[]", *p) != NULL) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -308,7 +308,7 @@ Node *func() {
     Token *tok = consume_ident();
     if (!tok) {
         error_at(token->str, "関数名ではありません");
-    } 
+    }
     node->name = tok->str;
     node->name_len = tok->len;
     node->ty = currTy;
@@ -328,13 +328,11 @@ Node *func() {
         Type *intTy = calloc(1, sizeof(Type));
         intTy->kind = INT;
         Type *currTy = intTy;
-        int n_ptr = 0;
         while(consume("*")) {
             Type *ptrTy = calloc(1, sizeof(Type));
             ptrTy->kind = PTR;
             ptrTy->ptr_to = currTy;
             currTy = ptrTy;
-            n_ptr++;
         }
         Token *tok = consume_ident();
         if (tok) {
@@ -343,6 +341,13 @@ Node *func() {
             if (lvar) {
                 arg->offset = lvar->offset;
             } else {
+                if (consume("[")) {
+                    // 引数の配列はポインタとして扱うため
+                    Type *ptrTy = new_type(PTR, currTy);
+                    currTy = ptrTy;
+                    // 引数定義時に要素数は指定しない想定
+                    expect("]");
+                }
                 lvar = calloc(1, sizeof(LVar));
                 lvar->next = locals;
                 lvar->name = tok->str;
@@ -352,12 +357,8 @@ Node *func() {
                     n_offset = 8;
                 lvar->offset = locals->offset + n_offset;
                 lvar->ty = currTy;
-                lvar->n_ptr = n_ptr;
                 arg->offset = lvar->offset;
-                int n_original_size = 4;
-                if (currTy->kind == PTR)
-                    n_original_size = 8;
-                arg->original_n_size = n_original_size;
+                arg->ty = currTy;
                 locals = lvar;
             }
             curr->next = arg;
@@ -580,13 +581,11 @@ Node *primary() {
         Type *intTy = calloc(1, sizeof(Type));
         intTy->kind = INT;
         Type *curr = intTy;
-        int n_ptr = 0;
         while(consume("*")) {
             Type *ptrTy = calloc(1, sizeof(Type));
             ptrTy->kind = PTR;
             ptrTy->ptr_to = curr;
             curr = ptrTy;
-            n_ptr++;
         }
         Token *tok = consume_ident();
         if (tok) {
@@ -598,17 +597,32 @@ Node *primary() {
             if (lvar) {
                 error_at(token->str, "すでに使用されている識別子です");
             }
+            if (consume("[")) {
+                Type *arrTy = new_type(ARRAY, NULL);
+                arrTy->base = curr;
+                arrTy->array_size = expect_number();
+                expect("]");
+                curr= arrTy;
+            }
 
             lvar = calloc(1, sizeof(LVar));
             lvar->next = locals;
             lvar->name = tok->str;
             lvar->len = tok->len;
-            int n_offset = 4;
-            if (curr->kind == PTR)
+            int n_offset;
+            if (curr->kind == INT)
+                n_offset = 4;
+            else if (curr->kind == PTR)
                 n_offset = 8;
+            else if (curr->kind == ARRAY) {
+                if (curr->base->kind == INT) {
+                    n_offset = 4 * curr->array_size;
+                } else {
+                    n_offset = 8 * curr->array_size;
+                }
+            }
             lvar->offset = locals->offset + n_offset;
             lvar->ty = curr;
-            lvar->n_ptr = n_ptr;
             node->offset = lvar->offset;
             locals = lvar;
 
@@ -646,17 +660,45 @@ Node *primary() {
 
             return node;
         }
+        // 配列の要素へのアクセス
+        // これこの段階でoffsetの計算できないか？
+        // if (consume("[")) {
+        //     LVar *lvar = find_lvar(tok);
+        //     if (lvar) {
+        //         if (!lvar->ty->kind != ARRAY)
+        //             error_at(token->str, "配列ではありません");
+        //         // a[1] -> *(a+1)に直す
+        //         Node *nodeArr = calloc(1, sizeof(Node));
+        //         nodeArr->offset = lvar->offset;
+        //         if (lvar->ty->kind == PTR)
+        //             nodeArr->original_n_size = 8;
+        //         else
+        //             nodeArr->original_n_size = 4;
+        //         // nodeArr->ty = new_type(PTR, lvar->ty->base);
+        //         nodeArr->ty = lvar->ty->base;
+        //         Node *nodeOffset = new_num(expect_number());
+        //         if (!consume("]"))
+        //             error_at(token->str, "']'を期待しています");
+        //         // これoverwriteされる？
+        //         // Node *nodeAdd = new_binary(ND_ADD, nodeArr, nodeOffset, nodeArr->ty);
+        //         Node *nodeAdd = new_binary(ND_ADD, new_binary(ND_ADDR, nodeArr, NULL, nodeArr->ty), nodeOffset, new_type(PTR, nodeArr->ty));
+        //         return new_binary(ND_DEREF, nodeAdd, NULL, nodeArr->ty->ptr_to);
+        //     } else
+        //         error_at(token->str, "宣言されていません");
+        // }
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
 
         LVar *lvar = find_lvar(tok);
         if (lvar) {
             node->offset = lvar->offset;
-            if (lvar->ty->kind == PTR)
-                node->original_n_size = 8;
+            // 配列の場合先頭要素のアドレスに変換
+            if (lvar->ty->kind == ARRAY) {
+                node->ty = lvar->ty->base;
+                node = new_binary(ND_ADDR, node, NULL, new_type(PTR, node->ty));
+            }
             else
-                node->original_n_size = 4;
-            node->ty = lvar->ty;
+                node->ty = lvar->ty;
         } else {
             // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
             error_at(token->str, "宣言されていません");

@@ -17,8 +17,9 @@ struct Token {
 };
 
 typedef enum {
-    INT, // int
-    PTR, // pointer
+    INT,
+    PTR,
+    ARRAY,
 } TypeKind;
 
 typedef struct Type Type;
@@ -26,6 +27,8 @@ typedef struct Type Type;
 struct Type {
     TypeKind kind;
     Type *ptr_to;
+    Type *base; // arrayの時のベース型
+    int array_size;
 };
 
 typedef struct Func Func;
@@ -47,7 +50,6 @@ struct LVar {
     int len;    // 名前の長さ
     int offset; // RBPからのオフセット
     Type *ty; // 型情報
-    int n_ptr; //ポインタがいくつ繋がっているか
 };
 
 // 抽象構文木のノードの種類
@@ -97,7 +99,6 @@ struct Node {
     Node *body; // 関数の中身
 
     int is_lefthand; // 代入先かどうか
-    int original_n_size; // 元々の型のサイズ. 何bitのレジスタを使うか判断するために使う
     Type *ty;
 };
 

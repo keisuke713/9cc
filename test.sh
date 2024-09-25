@@ -143,6 +143,24 @@ assert 4 "int main() { int x; int *y; x = 1; y = &x; sizeof(*y); }"
 assert 4 "int main() { sizeof(sizeof(1)); }"
 assert 8 "int main() { int **x; sizeof(*x); }"
 
+assert 1 "int main() { int a[2]; *a = 1; *a; }"
+assert 2 "int main() { int a[2]; *(a + 1) = 2; *a = 1; *(a + 1); }"
+assert 2 "int main() { int a[2]; *(a + 1) = 2; *(a + 1); }"
+assert 3 "int main() { int a[2]; *a = 1; *(a + 1) = 2; *a + *(a + 1); }"
+assert 1 "int foo(int *a) { *a = 1; } int main() { int a[1]; foo(a); *a; }"
+assert 3 "int foo(int *a) { *a = 1; *(a + 1) = 2; } int main() { int a[2]; foo(a); *a + *(a + 1); }"
+assert 1 "int foo(int a[]) { *a = 1; } int main() { int a[1]; foo(a); *a; }"
+assert 1 "int main() { int *a[2]; int x; int *xx; x = 1; xx = &x; int y; int *yy; y = 2; yy = &y; *a = xx; *(a + 1) = yy; **(a + 0); }"
+
+# assert 1 "int main() { int a[2]; a[0] = 1; a[0]; }"
+# assert 2 "int main() { int a[2]; a[1] = 2; a[1]; }"
+# assert 2 "int main() { int x; int *y; x = 2; y = &x; int *a[1]; a[0] = y; *(a[0]); }"
+# assert 1 "int foo(int a[]) { a[0] = 1; } int main() { int a[1]; foo(a); *a; }"
+
+# 関数の戻り値として使うケースあるか？
+# 代入の時型チェック
+# セルフホストで使わないなら省略
+
 
 # 最低限セルフホストに必要なところだけ実装する
 # 関数ごとにローカル変数を管理するようにしないとバグるかも
