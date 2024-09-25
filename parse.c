@@ -7,6 +7,23 @@
 
 #include "9cc.h"
 
+int type_size(Type *type) {
+    if (type == NULL)
+        return 0;
+
+    if (type->kind == INT)
+        return 4;
+
+    if (type->kind == PTR)
+        return 8;
+
+    if (type->kind == ARRAY)
+        if (type->base->kind == INT)
+            return 4 * type->array_size;
+        else if (type->base->kind == PTR)
+            return 8 * type->array_size;
+}
+
 Type *new_type(TypeKind kind, Type *ptr_to) {
     Type *ty = calloc(1, sizeof(Type));
     ty->kind = kind;
@@ -352,10 +369,7 @@ Node *func() {
                 lvar->next = locals;
                 lvar->name = tok->str;
                 lvar->len = tok->len;
-                int n_offset = 4;
-                if (currTy->kind == PTR)
-                    n_offset = 8;
-                lvar->offset = locals->offset + n_offset;
+                lvar->offset = locals->offset + type_size(currTy);
                 lvar->ty = currTy;
                 arg->offset = lvar->offset;
                 arg->ty = currTy;
@@ -564,10 +578,9 @@ Node *unary() {
     }
     if (consume_sizeof()) {
         Node *node = unary();
-        if (node->ty->kind == INT)
-            node = new_num(4);
-        else
-            node = new_num(8);
+        // 配列は正しく動作しない
+        // 暗黙的にポインタに変換しているので
+        node = new_num(type_size(node->ty));
         return node;
     }
     return primary();
@@ -609,19 +622,7 @@ Node *primary() {
             lvar->next = locals;
             lvar->name = tok->str;
             lvar->len = tok->len;
-            int n_offset;
-            if (curr->kind == INT)
-                n_offset = 4;
-            else if (curr->kind == PTR)
-                n_offset = 8;
-            else if (curr->kind == ARRAY) {
-                if (curr->base->kind == INT) {
-                    n_offset = 4 * curr->array_size;
-                } else {
-                    n_offset = 8 * curr->array_size;
-                }
-            }
-            lvar->offset = locals->offset + n_offset;
+            lvar->offset = locals->offset + type_size(curr);
             lvar->ty = curr;
             node->offset = lvar->offset;
             locals = lvar;
@@ -661,31 +662,34 @@ Node *primary() {
             return node;
         }
         // 配列の要素へのアクセス
-        // これこの段階でoffsetの計算できないか？
-        // if (consume("[")) {
-        //     LVar *lvar = find_lvar(tok);
-        //     if (lvar) {
-        //         if (!lvar->ty->kind != ARRAY)
-        //             error_at(token->str, "配列ではありません");
-        //         // a[1] -> *(a+1)に直す
-        //         Node *nodeArr = calloc(1, sizeof(Node));
-        //         nodeArr->offset = lvar->offset;
-        //         if (lvar->ty->kind == PTR)
-        //             nodeArr->original_n_size = 8;
-        //         else
-        //             nodeArr->original_n_size = 4;
-        //         // nodeArr->ty = new_type(PTR, lvar->ty->base);
-        //         nodeArr->ty = lvar->ty->base;
-        //         Node *nodeOffset = new_num(expect_number());
-        //         if (!consume("]"))
-        //             error_at(token->str, "']'を期待しています");
-        //         // これoverwriteされる？
-        //         // Node *nodeAdd = new_binary(ND_ADD, nodeArr, nodeOffset, nodeArr->ty);
-        //         Node *nodeAdd = new_binary(ND_ADD, new_binary(ND_ADDR, nodeArr, NULL, nodeArr->ty), nodeOffset, new_type(PTR, nodeArr->ty));
-        //         return new_binary(ND_DEREF, nodeAdd, NULL, nodeArr->ty->ptr_to);
-        //     } else
-        //         error_at(token->str, "宣言されていません");
-        // }
+        if (consume("[")) {
+            LVar *lvar = find_lvar(tok);
+            if (lvar) {
+                // 配列とポインタ以外は添字アクセスはできない
+                if (lvar->ty->base == NULL && lvar->ty->ptr_to == NULL)
+                    error_at(token->str, "'[]'は使えません");
+
+                if (lvar->ty->kind == PTR) {
+                    Node *ptr_node = calloc(1, sizeof(Node));
+                    ptr_node->kind = ND_LVAR;
+                    ptr_node->offset = lvar->offset;
+                    ptr_node->ty = lvar->ty;
+                    Node *num_node = new_num(expect_number() * type_size(lvar->ty->ptr_to));
+                    Node *add_node = new_binary(ND_ADD, ptr_node, num_node, ptr_node->ty);
+                    expect("]");
+                    return new_binary(ND_DEREF, add_node, NULL, add_node->lhs->ty->ptr_to);
+                }
+
+                Node *arrLvar = calloc(1, sizeof(Node));
+                arrLvar->kind = ND_LVAR;
+                arrLvar->offset = lvar->offset - (expect_number() * type_size(lvar->ty->base));
+                arrLvar->ty = lvar->ty->base;
+                Node *addr = new_binary(ND_ADDR, arrLvar, NULL, new_type(PTR, arrLvar->ty));
+                expect("]");
+                return new_binary(ND_DEREF, addr, NULL, addr->ty->ptr_to);
+            } else
+                error_at(token->str, "宣言されていません");
+        }
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
 
