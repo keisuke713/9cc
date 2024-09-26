@@ -100,6 +100,8 @@ struct Node {
 
     int is_lefthand; // 代入先かどうか
     Type *ty;
+
+    LVar *locals; // ローカル変数
 };
 
 Node *new_node(NodeKind kind);

@@ -76,10 +76,10 @@ Token *token;
 Func *new_func(Func *next, char *name, int len, Type *res_type);
 // 定義されている関数群
 Func *funcs;
+// 現在パースされている関数
+Node *func_node;
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset);
-// ローカル変数
-LVar *locals;
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -181,13 +181,13 @@ LVar *new_lvar(LVar *next, char *name, int len, int offset) {
     lvar->len = len;
     lvar->offset = offset;
 
-    locals = lvar;
+    func_node->locals = lvar;
 
-    return locals;
+    return func_node->locals;
 }
 
-LVar *find_lvar(Token *tok) {
-    for (LVar *var = locals; var; var = var->next) {
+LVar *find_lvar(Token *tok, Node *func) {
+    for (LVar *var = func->locals; var; var = var->next) {
         if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
             return var;
     }
@@ -314,6 +314,7 @@ Node *func() {
         error_at(token->str, "すでに定義されている関数です");
     }
     node->kind = ND_FUNC;
+    func_node = node;
     if (!(consume("int")))
         error_at(token->str, "型定義ではありません");
     Type *intTy = new_type(INT, NULL);
@@ -338,7 +339,7 @@ Node *func() {
     Node *curr = arguDummy;
     int n_args = 1;
     // ローカル変数を管理する構造体を初期化
-    locals = new_lvar(NULL, "dummy", 0, 0);
+    func_node->locals = new_lvar(NULL, "dummy", 0, 0);
     while (!consume(")")) {
         if (!consume("int"))
             error_at(token->str, "型定義ではありません");
@@ -353,7 +354,7 @@ Node *func() {
         }
         Token *tok = consume_ident();
         if (tok) {
-            LVar *lvar = find_lvar(tok);
+            LVar *lvar = find_lvar(tok, func_node);
             Node *arg = calloc(1, sizeof(Node));
             if (lvar) {
                 arg->offset = lvar->offset;
@@ -366,14 +367,14 @@ Node *func() {
                     expect("]");
                 }
                 lvar = calloc(1, sizeof(LVar));
-                lvar->next = locals;
+                lvar->next = func_node->locals;
                 lvar->name = tok->str;
                 lvar->len = tok->len;
-                lvar->offset = locals->offset + type_size(currTy);
+                lvar->offset = func_node->locals->offset + type_size(currTy);
                 lvar->ty = currTy;
                 arg->offset = lvar->offset;
                 arg->ty = currTy;
-                locals = lvar;
+                func_node->locals = lvar;
             }
             curr->next = arg;
             curr = curr->next;
@@ -605,7 +606,7 @@ Node *primary() {
             Node *node = calloc(1, sizeof(Node));
             node->kind = ND_DECL;
 
-            LVar *lvar = find_lvar(tok);
+            LVar *lvar = find_lvar(tok, func_node);
 
             if (lvar) {
                 error_at(token->str, "すでに使用されている識別子です");
@@ -619,13 +620,13 @@ Node *primary() {
             }
 
             lvar = calloc(1, sizeof(LVar));
-            lvar->next = locals;
+            lvar->next = func_node->locals;
             lvar->name = tok->str;
             lvar->len = tok->len;
-            lvar->offset = locals->offset + type_size(curr);
+            lvar->offset = func_node->locals->offset + type_size(curr);
             lvar->ty = curr;
             node->offset = lvar->offset;
-            locals = lvar;
+            func_node->locals = lvar;
 
             return node;
         }
@@ -663,7 +664,7 @@ Node *primary() {
         }
         // 配列の要素へのアクセス
         if (consume("[")) {
-            LVar *lvar = find_lvar(tok);
+            LVar *lvar = find_lvar(tok, func_node);
             if (lvar) {
                 // 配列とポインタ以外は添字アクセスはできない
                 if (lvar->ty->base == NULL && lvar->ty->ptr_to == NULL)
@@ -695,7 +696,7 @@ Node *primary() {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
 
-        LVar *lvar = find_lvar(tok);
+        LVar *lvar = find_lvar(tok, func_node);
         if (lvar) {
             node->offset = lvar->offset;
             // 配列の場合先頭要素のアドレスに変換
