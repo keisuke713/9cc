@@ -158,7 +158,13 @@ assert 2 "int main() { int x; int *y; x = 2; y = &x; int *a[1]; a[0] = y; *(a[0]
 assert 2 "int foo(int a[]) { a[1] = 2; a[0] = 1; } int main() { int a[2]; foo(a); *(a + 1); }"
 assert 2 "int foo(int *a) { a[1] = 2; a[0] = 1; } int main() { int a[2]; foo(a); *(a + 1); }"
 
+assert 3 "int main() { int x; int y; int *a; int i; x = 1; y = 2;  a = &y; i = 1; a[i] = 3; a[i];}"
+assert 2 "int main() { int a[2]; int x; x = 0; a[x + 1] = 2;  a[x] = 1; a[x + 1]; }"
+
+# 関数ごとにローカル変数を管理
 # 代入の時型チェック
+# グローバル変数
+
 # テストをc言語で書き直せるか
 # 関数の戻り値として使うケースあるか？
 # セルフホストで使わないなら省略

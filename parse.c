@@ -674,19 +674,21 @@ Node *primary() {
                     ptr_node->kind = ND_LVAR;
                     ptr_node->offset = lvar->offset;
                     ptr_node->ty = lvar->ty;
-                    Node *num_node = new_num(expect_number() * type_size(lvar->ty->ptr_to));
-                    Node *add_node = new_binary(ND_ADD, ptr_node, num_node, ptr_node->ty);
+                    Node *mul_node = new_binary(ND_MUL, expr(), new_num(type_size(lvar->ty->ptr_to)), new_type(INT, NULL));
+                    Node *add_node = new_binary(ND_ADD, ptr_node, mul_node, ptr_node->ty);
                     expect("]");
                     return new_binary(ND_DEREF, add_node, NULL, add_node->lhs->ty->ptr_to);
                 }
 
                 Node *arrLvar = calloc(1, sizeof(Node));
                 arrLvar->kind = ND_LVAR;
-                arrLvar->offset = lvar->offset - (expect_number() * type_size(lvar->ty->base));
+                arrLvar->offset = lvar->offset;
+                Node *mul_node = new_binary(ND_MUL, expr(), new_num(type_size(lvar->ty->base)), new_type(INT, NULL));
                 arrLvar->ty = lvar->ty->base;
                 Node *addr = new_binary(ND_ADDR, arrLvar, NULL, new_type(PTR, arrLvar->ty));
+                Node *add_node = new_binary(ND_ADD, addr, mul_node, addr->ty);
                 expect("]");
-                return new_binary(ND_DEREF, addr, NULL, addr->ty->ptr_to);
+                return new_binary(ND_DEREF, add_node, NULL, add_node->ty->ptr_to);
             } else
                 error_at(token->str, "宣言されていません");
         }
