@@ -160,7 +160,7 @@ assert 2 "int foo(int *a) { a[1] = 2; a[0] = 1; } int main() { int a[2]; foo(a);
 
 assert 3 "int main() { int x; int y; int *a; int i; x = 1; y = 2;  a = &y; i = 1; a[i] = 3; a[i];}"
 assert 2 "int main() { int a[2]; int x; x = 0; a[x + 1] = 2;  a[x] = 1; a[x + 1]; }"
-
+assert 2 "int foo(int *a, int i) { a[i] = 2; } int main() { int a[2]; int x; x = 1; foo(a, x); *(a + 1); }"
 # 関数ごとにローカル変数を管理
 # 代入の時型チェック
 # グローバル変数
