@@ -27,7 +27,13 @@ void gen_lval(Node *node) {
     printf("    push rax\n");
 }
 
-int n_label = 0;
+// if-else文のラベルの通り番号
+int n_else = 0;
+int n_if_end = 0;
+
+// while文のラベルの通し番号
+int n_while_begin = 0;
+int n_while_end = 0;
 
 void gen(Node *node) {
     if (!node)
@@ -59,19 +65,45 @@ void gen(Node *node) {
             printf("    pop rbp\n");
             printf("    ret\n");
             return;
-        case ND_IF:
-            int FalseStmtLabel = ++n_label; // 条件の結果がfalseだった時のjmp先
-            int AfterTrueStmtLabel = ++n_label; // 条件がtrueの時の処理が終わった後のjmp先
+        case ND_IF: {
+            int else_stmt_label = ++n_else; // 条件の結果がfalseだった時のjmp先に使う通しNo
+            int end_stmt_label = ++n_if_end; // 条件がtrueの時の処理が終わった後のjmp先の通りNo
             gen(node->cond);
             printf("    pop rax\n");
             printf("    cmp rax, 0\n");
-            printf("    je .Lend%d\n", FalseStmtLabel);
+            printf("    je .Lelse%d\n", else_stmt_label);
             gen(node->then);
-            printf("    jmp .Lend%d \n", AfterTrueStmtLabel);
-            printf(".Lend%d:\n", FalseStmtLabel);
+            printf("    jmp .Liend%d \n", end_stmt_label);
+            printf(".Lelse%d:\n", else_stmt_label);
             gen(node->els);
-            printf(".Lend%d:\n", AfterTrueStmtLabel);
+            printf(".Liend%d:\n", end_stmt_label);
             return;
+        }
+        case ND_WHILE: {
+            int begin_stmt_label = ++n_while_begin; // while文の始まりラベルの通し番号
+            int end_stmt_label = ++n_while_end; // while文の終了ラベルの通し番号
+            printf(".Lwbegin%d:\n", begin_stmt_label);
+            gen(node->cond);
+            printf("    pop rax\n");
+            printf("    cmp rax, 0\n");
+            printf("    je .Lwend%d\n", end_stmt_label);
+            gen(node->then);
+            printf("    jmp .Lwbegin%d\n", begin_stmt_label);
+            printf(".Lwend%d:\n", end_stmt_label);
+            return;
+        }
+        case ND_CONTINUE: {
+            // TODO: while以外でも使うと思うがその際壊れないか？
+            int begin_stmt_label = n_while_begin; // while文の始まりラベルの通し番号
+            printf("    jmp .Lwbegin%d\n", begin_stmt_label);
+            return;
+        }
+        case ND_BREAK: {
+            // TODO: while以外でも使うと思うがその際壊れないか？
+            int end_stmt_label = n_while_end; // while文の終了ラベルの通し番号
+            printf("    jmp .Lwend%d\n", end_stmt_label);
+            return;
+        }
         case ND_BLOCK:
             node = node->next;
             while (node) {

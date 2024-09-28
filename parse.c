@@ -244,11 +244,35 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if ('a' <= *p && *p <= 'z') {
+        if (strncmp(p, "while", 5) == 0 && !is_alnum(p[5])) {
+            cur = new_token(TK_RESERVED, cur, "while", 5);
+            p += 5;
+            continue;
+        }
+
+        if (strncmp(p, "continue", 8) == 0 && !is_alnum(p[8])) {
+            cur = new_token(TK_RESERVED, cur, "continue", 8);
+            p += 8;
+            continue;
+        }
+
+        if (strncmp(p, "break", 5) == 0 && !is_alnum(p[5])) {
+            cur = new_token(TK_RESERVED, cur, "break", 5);
+            p += 5;
+            continue;
+        }
+
+        if (strncmp(p, "for", 5) == 0 && !is_alnum(p[3])) {
+            cur = new_token(TK_RESERVED, cur, "for", 3);
+            p += 3;
+            continue;
+        }
+
+        if (('a' <= *p && *p <= 'z') || '_' == *p) {
             // pは進んでいくのでスタート時点のアドレスを保持する
             char *start = p;
             int len = 0;
-            while ('a' <= *p && *p <= 'z') {
+            while (('a' <= *p && *p <= 'z') || '_' == *p) {
                 len++;
                 p++;
             }
@@ -396,6 +420,7 @@ Node *func() {
 //            | "{" stmt* "}"
 //            | "return" expr ";"
 //            | "if" "(" expr ")" stmt ("else" stmt)?
+//            | "while" "(" expr ")" stmt
 Node *stmt() {
     Node *node;
     if (consume("{")) {
@@ -421,7 +446,27 @@ Node *stmt() {
         if (consume("else"))
             node->els = stmt();
         return node;
-    } else {
+    } else if (consume("while")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_WHILE;
+        node->cond = expr();
+        node->then = stmt();
+        return node;
+    } else if (consume("continue")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_CONTINUE;
+        expect(";");
+        return node;
+    } else if (consume("break")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_BREAK;
+        expect(";");
+        return node;
+    } else if (consume("for")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_FOR;
+        return node;
+    }  else {
         node = expr();
     }
 
