@@ -173,10 +173,18 @@ assert 2 "int swap(int *x, int *y) {int *tmp; tmp = x; *x = *y; *y = *tmp; } int
 assert 15 "int main() { int sum; int i; sum = 0; i = 5; while (0 < i) { sum = sum + i; i = i - 1; } sum; }"
 assert 30 "int main() { int even_sum; int i; int is_even; even_sum = 0; i = 1; is_even = 0; while (i < 11) { if (is_even) { is_even = 0; } else { is_even = 1; i = i + 1; continue; } even_sum = even_sum + i; i = i + 1; } return even_sum; }"
 
-# assert 10 "int main() { int sum; int i; sum = 0; i = 0; for (; i < 5; i = i + 1) { sum = sum + 1; } sum; }"
-# assert 10 "int main() { int a[4]; a[0] = 1; a[1] = 2; *(a + 2) = 3; *(a + 3) = 4; int sum; int i; sum = 0; i = 0; for (; i < 5; i = i + 1;) { sum = sum + a[i]; } }"
+assert 6 "int main() { int sum; int i; int arr[4]; sum = 0; i = 0; arr[0] = 1; arr[1] = 2; arr[2] = 3; arr[3] = 4; while (sum < 11) { if (i == 3) break; sum = sum + arr[i]; i = i + 1; } sum; }"
 
-# forとswitch(break)
+assert 10 "int main() { int sum; int i; sum = 0; for (i = 0; i < 5; i = i + 1) { sum = sum + i; } sum; }"
+assert 10 "int main() { int sum; int i; sum = 0; i = 0; for (; i < 5; i = i + 1) { sum = sum + i; } sum; }"
+assert 10 "int main() { int a[4]; a[0] = 1; a[1] = 2; *(a + 2) = 3; *(a + 3) = 4; int sum; int i; sum = 0; i = 0; for (; i < 4; i = i + 1) { sum = sum + a[i]; } sum; }"
+assert 2 "int main() { int i; for (i = 0; i < 4; i = i + 1) { if (i == 0) continue; if (i == 2) break; } i; }"
+assert 5 "int main() { int i; i = 0; for(;;) { if (i < 5) {  i = i + 1; continue; } if (i == 5) break; } i; }"
+
+# switch(break)
+# switchは既存のコードも全てブロックにする
+# switchの中でwhile使ったりforさらにswitch使うコードなどをテストとして用意
+# 変数はブロックごとのスコープにする
 # 単項演算子(前置と後置)
 # 初期化式
 # グローバル変数

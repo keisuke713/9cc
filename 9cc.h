@@ -90,6 +90,8 @@ struct Node {
     int val; // kindがND_NUMの時のみ
     int offset; // kindがND_LVARの時のみ
 
+    Node *init;  // for文の初期化式
+    Node *update; // 条件の更新
     Node *cond;  // condition
     Node *then;
     Node *els;
@@ -105,7 +107,7 @@ struct Node {
     int is_lefthand; // 代入先かどうか
     Type *ty;
 
-    LVar *locals; // ローカル変数
+    LVar *locals; // スコープ内の変数
 };
 
 Node *new_node(NodeKind kind);

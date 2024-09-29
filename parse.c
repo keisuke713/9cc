@@ -262,7 +262,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strncmp(p, "for", 5) == 0 && !is_alnum(p[3])) {
+        if (strncmp(p, "for", 3) == 0 && !is_alnum(p[3])) {
             cur = new_token(TK_RESERVED, cur, "for", 3);
             p += 3;
             continue;
@@ -421,6 +421,7 @@ Node *func() {
 //            | "return" expr ";"
 //            | "if" "(" expr ")" stmt ("else" stmt)?
 //            | "while" "(" expr ")" stmt
+//            | "for" "(" expr ";" expr ";" expr)" stmt
 Node *stmt() {
     Node *node;
     if (consume("{")) {
@@ -465,6 +466,20 @@ Node *stmt() {
     } else if (consume("for")) {
         node = calloc(1, sizeof(Node));
         node->kind = ND_FOR;
+        expect("(");
+        if (!consume(";")) {
+            node->init = expr();
+            expect(";");
+        }
+        if (!consume(";")) {
+            node->cond = expr();
+            expect(";");
+        }
+        if (!consume(")")) {
+            node->update = expr();
+            expect(")");
+        }
+        node->then = stmt();
         return node;
     }  else {
         node = expr();

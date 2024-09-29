@@ -35,6 +35,14 @@ int n_if_end = 0;
 int n_while_begin = 0;
 int n_while_end = 0;
 
+// for文のラベルの通し番号
+int n_for_begin = 0;
+int n_for_end = 0;
+
+// ループ間の関係を管理
+Node *loop_stack[10];
+int curr_stack_top_index = 0;
+
 void gen(Node *node) {
     if (!node)
         return;
@@ -80,6 +88,7 @@ void gen(Node *node) {
             return;
         }
         case ND_WHILE: {
+            loop_stack[curr_stack_top_index++] = node;
             int begin_stmt_label = ++n_while_begin; // while文の始まりラベルの通し番号
             int end_stmt_label = ++n_while_end; // while文の終了ラベルの通し番号
             printf(".Lwbegin%d:\n", begin_stmt_label);
@@ -90,18 +99,54 @@ void gen(Node *node) {
             gen(node->then);
             printf("    jmp .Lwbegin%d\n", begin_stmt_label);
             printf(".Lwend%d:\n", end_stmt_label);
+            loop_stack[--curr_stack_top_index] = NULL;
+            return;
+        }
+        case ND_FOR: {
+            loop_stack[curr_stack_top_index++] = node;
+            int begin_stmt_label = ++n_for_begin; // for文の始まりラベルの通し番号
+            int end_stmt_label = ++n_for_end; // for文の終了ラベルの通し番号
+            gen(node->init);
+            printf(".Lfbegin%d:\n", n_for_begin);
+            gen(node->cond);
+            if (node->cond) {
+                printf("    pop rax\n");
+                printf("    cmp rax, 0\n");
+                printf("    je .Lfend%d\n", n_for_end);
+            }
+            gen(node->then);
+            gen(node->update);
+            printf("    jmp .Lfbegin%d\n", n_for_begin);
+            printf(".Lfend%d:\n", n_for_end);
+            loop_stack[--curr_stack_top_index] = NULL;
             return;
         }
         case ND_CONTINUE: {
-            // TODO: while以外でも使うと思うがその際壊れないか？
-            int begin_stmt_label = n_while_begin; // while文の始まりラベルの通し番号
-            printf("    jmp .Lwbegin%d\n", begin_stmt_label);
+            Node *curr_loop = loop_stack[curr_stack_top_index - 1];
+            if (curr_loop == NULL)
+                return;
+            if (curr_loop->kind == ND_WHILE) {
+                int begin_stmt_label = n_while_begin;
+                printf("    jmp .Lwbegin%d\n", begin_stmt_label);
+            } else if (curr_loop->kind == ND_FOR) {
+                gen(curr_loop->update);
+                int begin_stmt_label = n_for_begin;
+                printf("    jmp .Lfbegin%d\n", begin_stmt_label);
+            }
             return;
         }
         case ND_BREAK: {
-            // TODO: while以外でも使うと思うがその際壊れないか？
-            int end_stmt_label = n_while_end; // while文の終了ラベルの通し番号
-            printf("    jmp .Lwend%d\n", end_stmt_label);
+            Node *curr_loop = loop_stack[curr_stack_top_index - 1];
+            if (curr_loop == NULL)
+                return;
+            if (curr_loop->kind == ND_WHILE) {
+                int end_stmt_label = n_while_end;
+                printf("    jmp .Lwend%d\n", end_stmt_label);
+            } else if (curr_loop->kind == ND_FOR) {
+                int end_stmt_label = n_for_end;
+                printf("    jmp .Lfend%d\n", end_stmt_label);
+            }
+            loop_stack[--curr_stack_top_index] = NULL;
             return;
         }
         case ND_BLOCK:
