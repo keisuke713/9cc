@@ -48,16 +48,18 @@ void gen(Node *node) {
         return;
 
     switch (node->kind) {
-        case ND_NUM:
+        case ND_NUM: {
             printf("    push %d\n", node->val);
             return;
-        case ND_LVAR:
+        }
+        case ND_LVAR: {
             gen_lval(node);
             printf("    pop rax\n");
             printf("    mov %cax, [rax]\n", gen_prefix_register(node));
             printf("    push rax\n");
             return;
-        case ND_ASSIGN:
+        }
+        case ND_ASSIGN: {
             gen_lval(node->lhs);
             gen(node->rhs);
 
@@ -66,13 +68,15 @@ void gen(Node *node) {
             printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
             printf("    push rdi\n");
             return;
-        case ND_RETURN:
+        }
+        case ND_RETURN: {
             gen(node->lhs);
             printf("    pop rax\n");
             printf("    mov rsp, rbp\n");
             printf("    pop rbp\n");
             printf("    ret\n");
             return;
+        }
         case ND_IF: {
             int else_stmt_label = ++n_else; // 条件の結果がfalseだった時のjmp先に使う通しNo
             int end_stmt_label = ++n_if_end; // 条件がtrueの時の処理が終わった後のjmp先の通りNo
@@ -149,7 +153,7 @@ void gen(Node *node) {
             loop_stack[--curr_stack_top_index] = NULL;
             return;
         }
-        case ND_BLOCK:
+        case ND_BLOCK: {
             node = node->next;
             while (node) {
                 gen(node);
@@ -160,6 +164,7 @@ void gen(Node *node) {
                 node = node->next;
             }
             return;
+        }
         case ND_CALL: {
             int n_args = 0;
             Node *cur = node->args;
@@ -174,24 +179,30 @@ void gen(Node *node) {
             for (int n_order=n_args; n_order>0; n_order--) {
                 printf("    pop rax\n");
                 switch (n_order) {
-                case 1:
-                    printf("    mov rdi, rax\n");
-                    break;
-                case 2:
-                    printf("    mov rsi, rax\n");
-                    break;
-                case 3:
-                    printf("    mov rdx, rax\n");
-                    break;
-                case 4:
-                    printf("    mov rcx, rax\n");
-                    break;
-                case 5:
-                    printf("    mov r8, rax\n");
-                    break;
-                case 6:
-                    printf("    mov r9, rax\n");
-                    break;
+                    case 1: {
+                        printf("    mov rdi, rax\n");
+                        break;
+                    }
+                    case 2: {
+                        printf("    mov rsi, rax\n");
+                        break;
+                    }
+                    case 3: {
+                        printf("    mov rdx, rax\n");
+                        break;
+                    }
+                    case 4: {
+                        printf("    mov rcx, rax\n");
+                        break;
+                    }
+                    case 5: {
+                        printf("    mov r8, rax\n");
+                        break;
+                    }
+                    case 6: {
+                        printf("    mov r9, rax\n");
+                        break;
+                    }
                 }
             }
             printf("    call %.*s\n", node->name_len, node->name);
@@ -214,24 +225,30 @@ void gen(Node *node) {
                 // 先に退避しないとレジスタが使われて上書きされてしまう
                 n_args++;
                 switch(n_args) {
-                case 1:
-                    printf("    mov rax, rdi\n");
-                    break;
-                case 2:
-                    printf("    mov rax, rsi\n");
-                    break;
-                case 3:
-                    printf("    mov rax, rdx\n");
-                    break;
-                case 4:
-                    printf("    mov rax, rcx\n");
-                    break;
-                case 5:
-                    printf("    mov rax, r8\n");
-                    break;
-                case 6:
-                    printf("    mov rax, r9\n");
-                    break;
+                    case 1: {
+                        printf("    mov rax, rdi\n");
+                        break;
+                    }
+                    case 2: {
+                        printf("    mov rax, rsi\n");
+                        break;
+                    }
+                    case 3:{
+                        printf("    mov rax, rdx\n");
+                        break;
+                    }
+                    case 4: {
+                        printf("    mov rax, rcx\n");
+                        break;
+                    }
+                    case 5: {
+                        printf("    mov rax, r8\n");
+                        break;
+                    }
+                    case 6: {
+                        printf("    mov rax, r9\n");
+                        break;
+                    }
                 }
                 printf("    push rax\n");
 
@@ -257,10 +274,11 @@ void gen(Node *node) {
             printf("    ret\n");
             return;
         }
-        case ND_ADDR:
+        case ND_ADDR: {
             gen_lval(node->lhs);
             return;
-        case ND_DEREF:
+        }
+        case ND_DEREF: {
             gen(node->lhs);
             // 下記のメモリコピーはポインタの指すアドレスの中身を参照したい時のみ、
             // つまりポインタが左辺値として使われる場合は必要ない
@@ -271,9 +289,11 @@ void gen(Node *node) {
             printf("    mov rax, [rax]\n");
             printf("    push rax\n");
             return;
-        case ND_DECL:
+        }
+        case ND_DECL: {
             // 構文木側で変数の宣言とメモリの確保は完了しているので何もしない
             return;
+        }
     }
 
     gen(node->lhs);
@@ -283,39 +303,47 @@ void gen(Node *node) {
     printf("    pop rax\n");
 
     switch (node->kind) {
-        case ND_ADD:
+        case ND_ADD: {
             printf("    add rax, rdi\n");
             break;
-        case ND_SUB:
+        }
+        case ND_SUB: {
             printf("    sub rax, rdi\n");
             break;
-        case ND_MUL:
+        }
+        case ND_MUL: {
             printf("    imul rax, rdi\n");
             break;
-        case ND_DIV:
+        }
+        case ND_DIV: {
             printf("    cqo\n");
             printf("    idiv rax, rdi\n");
             break;
-        case ND_EQ:
+        }
+        case ND_EQ: {
             printf("    cmp rax, rdi\n");
             printf("    sete al\n");
             printf("    movzb rax, al\n");
             break;
-        case ND_NE:
+        }
+        case ND_NE: {
             printf("    cmp rax, rdi\n");
             printf("    setne al\n");
             printf("    movzb rax, al\n");
             break;
-        case ND_LT:
+        }
+        case ND_LT: {
             printf("    cmp rax, rdi\n");
             printf("    setl al\n");
             printf("    movzb rax, al\n");
             break;
-        case ND_LE:
+        }
+        case ND_LE: {
             printf("    cmp rax, rdi\n");
             printf("    setle al\n");
             printf("    movzb rax, al\n");
             break;
+        }
     }
 
     printf("    push rax\n");
