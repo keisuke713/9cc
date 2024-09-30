@@ -181,9 +181,45 @@ assert 10 "int main() { int a[4]; a[0] = 1; a[1] = 2; *(a + 2) = 3; *(a + 3) = 4
 assert 2 "int main() { int i; for (i = 0; i < 4; i = i + 1) { if (i == 0) continue; if (i == 2) break; } i; }"
 assert 5 "int main() { int i; i = 0; for(;;) { if (i < 5) {  i = i + 1; continue; } if (i == 5) break; } i; }"
 
-# switch(break)
-# switchは既存のコードも全てブロックにする
-# switchの中でwhile使ったりforさらにswitch使うコードなどをテストとして用意
+assert 8 "int main() { int i; i = 4; switch (i) { case 4: { i = i + 4; break; } case 3: { i = i + 3; break; }} i; }"
+assert 6 "int main() { int sum; sum = 0; int i; for (i = 0; i < 5; i = i + 1) { switch (i) { case 1: { break; } case 2: { sum = sum + 2; } case 3: { break; } case 4: { sum = sum + 4; }}} sum; }"
+
+assert 9 "$(cat <<EOF
+int main() {
+  int sum;
+  sum = 0;
+
+  int i;
+  i = 2;
+  switch (i) {
+    case 1: {
+      break;
+    }
+    case 2: {
+      int j;
+      for (j=1; j < 3; j = j + 1) {
+        sum = sum + j + i;
+      }
+      break;
+    }
+  }
+  switch(sum) {
+    case 7: {
+      switch (i) {
+        case 2: {
+          sum = sum + 2;
+          break;
+        }
+      }
+    }
+    case 8: {}
+    case 9: {}
+  }
+  sum;
+}
+EOF
+)"
+
 # 変数はブロックごとのスコープにする
 # 単項演算子(前置と後置)
 # 初期化式

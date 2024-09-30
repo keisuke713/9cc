@@ -70,6 +70,7 @@ typedef enum {
     ND_IF,       // if
     ND_ELSE,     // else
     ND_WHILE,    // while
+    ND_SWITCH,   // switch
     ND_CONTINUE, // continue
     ND_BREAK,    // break
     ND_FOR,      // for
@@ -95,6 +96,8 @@ struct Node {
     Node *cond;  // condition
     Node *then;
     Node *els;
+    Node *conds[10]; // switch文の条件式
+    Node *thens[10];
 
     Node *next; // 複文用
 

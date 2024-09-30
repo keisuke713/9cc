@@ -39,6 +39,11 @@ int n_while_end = 0;
 int n_for_begin = 0;
 int n_for_end = 0;
 
+// switch文のラベルの通し番号
+int n_switch_begin = 0;
+int n_switch_end = 0;
+int n_switch_then = 0;
+
 // ループ間の関係を管理
 Node *loop_stack[10];
 int curr_stack_top_index = 0;
@@ -116,12 +121,34 @@ void gen(Node *node) {
             if (node->cond) {
                 printf("    pop rax\n");
                 printf("    cmp rax, 0\n");
-                printf("    je .Lfend%d\n", n_for_end);
+                printf("    je .Lfend%d\n", end_stmt_label);
             }
             gen(node->then);
             gen(node->update);
-            printf("    jmp .Lfbegin%d\n", n_for_begin);
-            printf(".Lfend%d:\n", n_for_end);
+            printf("    jmp .Lfbegin%d\n", begin_stmt_label);
+            printf(".Lfend%d:\n", end_stmt_label);
+            loop_stack[--curr_stack_top_index] = NULL;
+            return;
+        }
+        case ND_SWITCH: {
+            loop_stack[curr_stack_top_index++] = node;
+            int begin_stmt_label = ++n_switch_begin; // switch文の始まり
+            int end_stmt_label = ++n_switch_end; // switch文の終わり
+            int then_stmt_label = ++n_switch_then; // 文の通し番号
+            printf(".Lsbegin%d:\n", begin_stmt_label);
+            for (int i = 0; node->conds[i]; i++) {
+                gen(node->conds[i]);
+                printf("    pop rax\n");
+                printf("    cmp rax, 0\n");
+                // 他のswitchに影響が出ないようにグローバルな値を更新する
+                printf("    jne .Lsthen%d\n", n_switch_then++);
+            }
+            for (int i = 0; node->thens[i]; i++) {
+                // 他のswitchに影響が出ないようにローカルな値を更新する
+                printf(".Lsthen%d:\n", then_stmt_label++);
+                gen(node->thens[i]);
+            }
+            printf(".Lsend%d:\n", end_stmt_label);
             loop_stack[--curr_stack_top_index] = NULL;
             return;
         }
@@ -136,6 +163,9 @@ void gen(Node *node) {
                 gen(curr_loop->update);
                 int begin_stmt_label = n_for_begin;
                 printf("    jmp .Lfbegin%d\n", begin_stmt_label);
+            } else if (curr_loop->kind == ND_SWITCH) {
+                int begin_stmt_label = n_switch_begin;
+                printf("    jmp .Lsbegin%d\n", begin_stmt_label);
             }
             return;
         }
@@ -149,8 +179,10 @@ void gen(Node *node) {
             } else if (curr_loop->kind == ND_FOR) {
                 int end_stmt_label = n_for_end;
                 printf("    jmp .Lfend%d\n", end_stmt_label);
+            } else if (curr_loop->kind == ND_SWITCH) {
+                int end_stmt_label = n_switch_end;
+                printf("    jmp .Lsend%d\n", end_stmt_label);
             }
-            loop_stack[--curr_stack_top_index] = NULL;
             return;
         }
         case ND_BLOCK: {

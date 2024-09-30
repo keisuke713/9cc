@@ -268,6 +268,18 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "switch", 6) == 0 && !is_alnum(p[6])) {
+            cur = new_token(TK_RESERVED, cur, "switch", 6);
+            p += 6;
+            continue;
+        }
+
+        if (strncmp(p, "case", 4) == 0 && !is_alnum(p[4])) {
+            cur = new_token(TK_RESERVED, cur, "case", 4);
+            p += 4;
+            continue;
+        }
+
         if (('a' <= *p && *p <= 'z') || '_' == *p) {
             // pは進んでいくのでスタート時点のアドレスを保持する
             char *start = p;
@@ -287,7 +299,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{},&[]", *p) != NULL) {
+        if (strchr("+-*/()<>=;{},&[]:", *p) != NULL) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -481,7 +493,25 @@ Node *stmt() {
         }
         node->then = stmt();
         return node;
-    }  else {
+    }  else if (consume("switch")) {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_SWITCH;
+        int i = 0;
+        // 左辺
+        Node *left_node = expr();
+        expect("{");
+        while (consume("case")) {
+            Node *right_node = expr();
+            Node *comparison_node = new_binary(ND_EQ, left_node, right_node, new_type(INT, NULL));
+            node->conds[i] = comparison_node;
+            expect(":");
+            Node *stmt_node = stmt();
+            node->thens[i] = stmt_node;
+            i++;
+        }
+        expect("}");
+        return node;
+    } else {
         node = expr();
     }
 
