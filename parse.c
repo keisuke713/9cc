@@ -76,10 +76,12 @@ Token *token;
 Func *new_func(Func *next, char *name, int len, Type *res_type);
 // 定義されている関数群
 Func *funcs;
-// 現在パースされている関数
-Node *func_node;
+// 現在パースされている関数 or ブロック
+Node *scope_node;
+// 関数全体で見た時の変数のオフセット
+int n_offset_within_func;
 
-LVar *new_lvar(LVar *next, char *name, int len, int offset);
+LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty);
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -174,16 +176,15 @@ Func *find_func(Token *tok) {
     return NULL;
 }
 
-LVar *new_lvar(LVar *next, char *name, int len, int offset) {
+LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty) {
     LVar *lvar = calloc(1, sizeof(LVar));
     lvar->next = next;
     lvar->name = name;
     lvar->len = len;
     lvar->offset = offset;
+    lvar->ty = ty;
 
-    func_node->locals = lvar;
-
-    return func_node->locals;
+    return lvar;
 }
 
 LVar *find_lvar(Token *tok, Node *func) {
@@ -350,7 +351,7 @@ Node *func() {
         error_at(token->str, "すでに定義されている関数です");
     }
     node->kind = ND_FUNC;
-    func_node = node;
+    scope_node = node;
     if (!(consume("int")))
         error_at(token->str, "型定義ではありません");
     Type *intTy = new_type(INT, NULL);
@@ -375,7 +376,8 @@ Node *func() {
     Node *curr = arguDummy;
     int n_args = 1;
     // ローカル変数を管理する構造体を初期化
-    func_node->locals = new_lvar(NULL, "dummy", 0, 0);
+    n_offset_within_func = 0;
+    scope_node->locals = new_lvar(NULL, "dummy", 0, n_offset_within_func, NULL);
     while (!consume(")")) {
         if (!consume("int"))
             error_at(token->str, "型定義ではありません");
@@ -390,7 +392,7 @@ Node *func() {
         }
         Token *tok = consume_ident();
         if (tok) {
-            LVar *lvar = find_lvar(tok, func_node);
+            LVar *lvar = find_lvar(tok, scope_node);
             Node *arg = calloc(1, sizeof(Node));
             if (lvar) {
                 arg->offset = lvar->offset;
@@ -402,15 +404,11 @@ Node *func() {
                     // 引数定義時に要素数は指定しない想定
                     expect("]");
                 }
-                lvar = calloc(1, sizeof(LVar));
-                lvar->next = func_node->locals;
-                lvar->name = tok->str;
-                lvar->len = tok->len;
-                lvar->offset = func_node->locals->offset + type_size(currTy);
-                lvar->ty = currTy;
+                lvar = new_lvar(scope_node->locals, tok->str, tok->len, n_offset_within_func + type_size(currTy), currTy);
+                n_offset_within_func += type_size(currTy);
                 arg->offset = lvar->offset;
                 arg->ty = currTy;
-                func_node->locals = lvar;
+                scope_node->locals = lvar;
             }
             curr->next = arg;
             curr = curr->next;
@@ -438,6 +436,9 @@ Node *stmt() {
     Node *node;
     if (consume("{")) {
         Node *block_node = calloc(1, sizeof(Node));
+        block_node->outer_scope = scope_node;
+        scope_node = block_node;
+        block_node->locals = new_lvar(NULL, "dummy", 0, n_offset_within_func, NULL);
         Node *curr = block_node;
         while (strncmp(token->str, "}", 1) != 0) {
             curr->next = stmt();
@@ -446,6 +447,8 @@ Node *stmt() {
         if (!consume("}"))
             error_at(token->str, "'}'ではないトークンです");
         block_node->kind = ND_BLOCK;
+        // ブロックが終了するのでスコープを一つ外側に戻す
+        scope_node = scope_node->outer_scope;
         return block_node;
     } else if (consume("return")) {
         node = calloc(1, sizeof(Node));
@@ -696,7 +699,7 @@ Node *primary() {
             Node *node = calloc(1, sizeof(Node));
             node->kind = ND_DECL;
 
-            LVar *lvar = find_lvar(tok, func_node);
+            LVar *lvar = find_lvar(tok, scope_node);
 
             if (lvar) {
                 error_at(token->str, "すでに使用されている識別子です");
@@ -709,14 +712,10 @@ Node *primary() {
                 curr= arrTy;
             }
 
-            lvar = calloc(1, sizeof(LVar));
-            lvar->next = func_node->locals;
-            lvar->name = tok->str;
-            lvar->len = tok->len;
-            lvar->offset = func_node->locals->offset + type_size(curr);
-            lvar->ty = curr;
+            lvar = new_lvar(scope_node->locals, tok->str, tok->len, n_offset_within_func + type_size(curr), curr);
+            n_offset_within_func += type_size(curr);
             node->offset = lvar->offset;
-            func_node->locals = lvar;
+            scope_node->locals = lvar;
 
             return node;
         }
@@ -754,53 +753,60 @@ Node *primary() {
         }
         // 配列の要素へのアクセス
         if (consume("[")) {
-            LVar *lvar = find_lvar(tok, func_node);
-            if (lvar) {
-                // 配列とポインタ以外は添字アクセスはできない
-                if (lvar->ty->base == NULL && lvar->ty->ptr_to == NULL)
-                    error_at(token->str, "'[]'は使えません");
+            // 内側のスコープから対象の変数が宣言されているか確認していく
+            LVar *lvar;
+            for (Node *scope = scope_node; scope; scope = scope->outer_scope) {
+                lvar = find_lvar(tok, scope);
+                if (lvar) {
+                    // 配列とポインタ以外は添字アクセスはできない
+                    if (lvar->ty->base == NULL && lvar->ty->ptr_to == NULL)
+                        error_at(token->str, "'[]'は使えません");
 
-                if (lvar->ty->kind == PTR) {
-                    Node *ptr_node = calloc(1, sizeof(Node));
-                    ptr_node->kind = ND_LVAR;
-                    ptr_node->offset = lvar->offset;
-                    ptr_node->ty = lvar->ty;
-                    Node *mul_node = new_binary(ND_MUL, expr(), new_num(type_size(lvar->ty->ptr_to)), new_type(INT, NULL));
-                    Node *add_node = new_binary(ND_ADD, ptr_node, mul_node, ptr_node->ty);
+                    if (lvar->ty->kind == PTR) {
+                        Node *ptr_node = calloc(1, sizeof(Node));
+                        ptr_node->kind = ND_LVAR;
+                        ptr_node->offset = lvar->offset;
+                        ptr_node->ty = lvar->ty;
+                        Node *mul_node = new_binary(ND_MUL, expr(), new_num(type_size(lvar->ty->ptr_to)), new_type(INT, NULL));
+                        Node *add_node = new_binary(ND_ADD, ptr_node, mul_node, ptr_node->ty);
+                        expect("]");
+                        return new_binary(ND_DEREF, add_node, NULL, add_node->lhs->ty->ptr_to);
+                    }
+
+                    Node *arrLvar = calloc(1, sizeof(Node));
+                    arrLvar->kind = ND_LVAR;
+                    arrLvar->offset = lvar->offset;
+                    Node *mul_node = new_binary(ND_MUL, expr(), new_num(type_size(lvar->ty->base)), new_type(INT, NULL));
+                    arrLvar->ty = lvar->ty->base;
+                    Node *addr = new_binary(ND_ADDR, arrLvar, NULL, new_type(PTR, arrLvar->ty));
+                    Node *add_node = new_binary(ND_ADD, addr, mul_node, addr->ty);
                     expect("]");
-                    return new_binary(ND_DEREF, add_node, NULL, add_node->lhs->ty->ptr_to);
+                    return new_binary(ND_DEREF, add_node, NULL, add_node->ty->ptr_to);
                 }
-
-                Node *arrLvar = calloc(1, sizeof(Node));
-                arrLvar->kind = ND_LVAR;
-                arrLvar->offset = lvar->offset;
-                Node *mul_node = new_binary(ND_MUL, expr(), new_num(type_size(lvar->ty->base)), new_type(INT, NULL));
-                arrLvar->ty = lvar->ty->base;
-                Node *addr = new_binary(ND_ADDR, arrLvar, NULL, new_type(PTR, arrLvar->ty));
-                Node *add_node = new_binary(ND_ADD, addr, mul_node, addr->ty);
-                expect("]");
-                return new_binary(ND_DEREF, add_node, NULL, add_node->ty->ptr_to);
-            } else
-                error_at(token->str, "宣言されていません");
+            }
+            error_at(token->str, "宣言されていません");
         }
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
 
-        LVar *lvar = find_lvar(tok, func_node);
-        if (lvar) {
-            node->offset = lvar->offset;
-            // 配列の場合先頭要素のアドレスに変換
-            if (lvar->ty->kind == ARRAY) {
-                node->ty = lvar->ty->base;
-                node = new_binary(ND_ADDR, node, NULL, new_type(PTR, node->ty));
+        LVar *lvar;
+        for (Node *scope = scope_node; scope; scope = scope->outer_scope) {
+            lvar = find_lvar(tok, scope);
+            if (lvar) {
+                node->offset = lvar->offset;
+                // 配列の場合先頭要素のアドレスに変換
+                if (lvar->ty->kind == ARRAY) {
+                    node->ty = lvar->ty->base;
+                    node = new_binary(ND_ADDR, node, NULL, new_type(PTR, node->ty));
+                }
+                else {
+                    node->ty = lvar->ty;
+                }
+                return node;
             }
-            else
-                node->ty = lvar->ty;
-        } else {
-            // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
-            error_at(token->str, "宣言されていません");
         }
-        return node;
+        // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
+        error_at(token->str, "宣言されていません");
     }
 
     // 現時点のトークンが識別子以外かつ次のトークンが"("なら、"(" expr ")"のはず

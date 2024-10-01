@@ -69,7 +69,7 @@ assert 2 'int main() { int foo; foo = 1; if (1 == 2) foo = foo + 2; else foo = f
 
 assert 3 'int main() { 1; 2; 3; }'
 assert 5 'int main() { int foo; foo = 2; int bar; bar = 3; foo + bar; }'
-assert 10 'int main() { if (1 == 2) {int foo; int hoge; foo = 3; return foo;} else { hoge = 10; return hoge; } }'
+assert 10 'int main() {  int hoge; if (1 == 2) {int foo; foo = 3; return foo;} else { hoge = 10; return hoge; } }'
 assert 2 'int main() { int foo; int bar; foo = 1; if (1) { foo = foo + 1; } else { bar = 10; foo + bar; } }'
 assert 5 'int main() { int foo; foo = 1; if (1) { foo = 6; } else { foo = foo + 1; } if (foo > 4) { foo = foo - 1; } else { foo = foo + 4; } return foo; }'
 
@@ -220,8 +220,131 @@ int main() {
 EOF
 )"
 
-# 変数はブロックごとのスコープにする
+assert 2 "$(cat <<EOF
+int main() {
+  int i;
+  i = 1;
+  if (i) {
+    int i;
+    i = 2;
+    return i;
+  }
+  return i;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 1;
+  if (1) {
+    return i;
+  }
+  return 0;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 1;
+  if (i) {
+    int i;
+    i = 0;
+  }
+  i;
+}
+EOF
+)"
+
+assert 2 "$(cat <<EOF
+int main() {
+  int sum;
+  sum = 0;
+
+  int i;
+  i = 1;
+  if (1) {
+    int i;
+    i = 2;
+
+    sum = sum + i;
+  }
+  if (1) {
+    int sum;
+    sum = 0;
+    sum = sum + i;
+  }
+  sum;
+}
+EOF
+)"
+
+assert 6 "$(cat <<EOF
+int foo(int i) {
+  int time;
+  time = 3;
+  if (i) {
+    int i;
+    i = 2;
+    return i * time;
+  }
+  i;
+}
+int main() {
+  int i;
+  i = 5;
+  foo(i);
+}
+EOF
+)"
+
+assert 10 "$(cat <<EOF
+int main() {
+  int sum;
+  sum = 0;
+
+  int i;
+  i = 1;
+
+  while (i < 5) {
+    switch (i) {
+      case 1: {
+        int j;
+        j = 1;
+        sum = sum + j;
+        break;
+      }
+      case 2: {
+        int j;
+        j = 2;
+        sum = sum + j;
+        break;
+      }
+      case 3: {
+        int j;
+        j = 3;
+        sum = sum + j;
+        break;
+      }
+      case 4: {
+        int j;
+        j = 4;
+        sum = sum + j;
+        break;
+      }
+    }
+    i = i + 1;
+  }
+  return sum;
+}
+EOF
+)"
+
 # 単項演算子(前置と後置)
+# += -=
 # 初期化式
 # グローバル変数
 # 代入の時型チェック

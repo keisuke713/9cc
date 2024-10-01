@@ -110,6 +110,7 @@ struct Node {
     int is_lefthand; // 代入先かどうか
     Type *ty;
 
+    Node *outer_scope; // 一つ外側のスコープ
     LVar *locals; // スコープ内の変数
 };
 
