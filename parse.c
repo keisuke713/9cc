@@ -294,7 +294,7 @@ Token *tokenize(char *p) {
         }
 
         // multi-letter punctuator
-        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=")) {
+        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=") || startswith(p, "++") || startswith(p, "--")) {
             cur = new_token(TK_RESERVED, cur, p, 2);
             p += 2;
             continue;
@@ -650,6 +650,18 @@ Node *mul() {
 //       | "&"? primary
 //       | "sizeof" primary
 Node *unary() {
+    // 前置
+    if (consume("++")) {
+        Node *node = unary();
+        node = new_binary(ND_PRE_INC, node, NULL, node->ty);
+        return node;
+    }
+    if (consume("--")) {
+        Node *node = unary();
+        node = new_binary(ND_PRE_DEC, node, NULL, node->ty);
+        return node;
+    
+    }
     if (consume("+")) {
         Node *node = unary();
         node->ty = new_type(INT, NULL);
@@ -677,7 +689,18 @@ Node *unary() {
         node = new_num(type_size(node->ty));
         return node;
     }
-    return primary();
+
+    Node *node = primary();
+
+    // 後置
+    if (consume("++")) {
+        node = new_binary(ND_POST_INC, node, NULL, node->ty);
+    }
+    if (consume("--")) {
+        node = new_binary(ND_POST_DEC, node, NULL, node->ty);
+    }
+
+    return node;
 }
 
 // primary = num

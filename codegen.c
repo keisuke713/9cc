@@ -23,8 +23,51 @@ void gen_lval(Node *node) {
         error("代入の左辺値が変数ではありません");
 
     printf("    mov rax, rbp\n");
-    printf("    sub rax, %d \n", node->offset);
+    printf("    sub rax, %d\n", node->offset);
     printf("    push rax\n");
+}
+
+void pre_modify(Node *node) {
+    gen_lval(node->lhs);
+    gen(node->lhs);
+    // TODO ポインタの時の挙動を考える
+    printf("    push 1\n");
+    printf("    pop rdi\n");
+    printf("    pop rax\n");
+    if (node->kind == ND_PRE_INC)
+        printf("    add rax, rdi\n");
+    else
+        printf("    sub rax, rdi\n");
+    printf("    push rax\n");
+    // 更新した値を書き込む
+    printf("    pop rdi\n");
+    printf("    pop rax\n");
+    printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
+    // 更新された値をスタックに積む
+    printf("    push rdi\n");
+}
+
+void post_modify(Node *node) {
+    // 現在の値をスタックに積む
+    gen(node->lhs);
+    
+    // 値の更新を行う
+    gen_lval(node->lhs);
+    gen(node->lhs);
+    // TODO ポインタの挙動を考える
+    printf("    push 1\n");
+    printf("    pop rdi\n");
+    printf("    pop rax\n");
+    if (node->kind == ND_POST_INC)
+        printf("    add rax, rdi\n");
+    else
+        printf("    sub rax, rdi\n");
+    printf("    push rax\n");
+    // 更新した値を書き込む
+    printf("    pop rdi\n");
+    printf("    pop rax\n");
+    printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
+    // 元の値が式の結果なので計算後の値はスタックには積まない
 }
 
 // if-else文のラベルの通り番号
@@ -90,7 +133,7 @@ void gen(Node *node) {
             printf("    cmp rax, 0\n");
             printf("    je .Lelse%d\n", else_stmt_label);
             gen(node->then);
-            printf("    jmp .Liend%d \n", end_stmt_label);
+            printf("    jmp .Liend%d\n", end_stmt_label);
             printf(".Lelse%d:\n", else_stmt_label);
             gen(node->els);
             printf(".Liend%d:\n", end_stmt_label);
@@ -191,7 +234,7 @@ void gen(Node *node) {
                 gen(node);
 
                 if (node->next && node->kind != ND_DECL)
-                    printf("    pop rax \n");
+                    printf("    pop rax\n");
 
                 node = node->next;
             }
@@ -324,6 +367,23 @@ void gen(Node *node) {
         }
         case ND_DECL: {
             // 構文木側で変数の宣言とメモリの確保は完了しているので何もしない
+            return;
+        }
+        case ND_PRE_INC: {
+            pre_modify(node);
+            return;
+        }
+        case ND_PRE_DEC: {
+            pre_modify(node);
+            return;
+        
+        }
+        case ND_POST_INC: {
+            post_modify(node);
+            return;
+        }
+        case ND_POST_DEC: {
+            post_modify(node);
             return;
         }
     }

@@ -58,6 +58,10 @@ typedef enum {
     ND_SUB,      // -
     ND_MUL,      // *
     ND_DIV,      // /
+    ND_PRE_INC,  // 前置インクリメント
+    ND_PRE_DEC,  // 前置デクリメント
+    ND_POST_INC, // 後置インクリメント
+    ND_POST_DEC, // 後置デクリメント
     ND_EQ,       // ==
     ND_NE,       // !=
     ND_LT,       // <

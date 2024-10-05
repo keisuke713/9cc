@@ -343,10 +343,101 @@ int main() {
 EOF
 )"
 
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0; 
+  ++i;
+  i;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0; 
+  i = i + 1;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0; 
+  ++i;
+
+  int ii;
+  ii = i;
+  ii;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 2;
+  --i;
+}
+EOF
+)"
+
+assert 0 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0;
+  i++;
+}
+EOF
+)"
+
+assert 2 "$(cat <<EOF
+int main() {
+  int i;
+  i = 2;
+  i--;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0;
+  i++;
+  i;
+}
+EOF
+)"
+
+assert 10 "$(cat <<EOF
+int main() {
+  int sum;
+  sum = 0;
+
+  int i;
+
+  for (i = 0; i < 5; i++)
+    sum = sum + i;
+  
+  return sum;
+}
+EOF
+)"
+
+# assert 1 "$(cat <<EOF
+# int main() {
+# }
+# EOF
+# )"
+
 # 単項演算子(前置と後置)
 # += -=
 # 初期化式
 # グローバル変数
+# 文字列
 # 代入の時型チェック
 # sizeofはarrayのbasesizeとlen見れないか？
 
@@ -356,7 +447,6 @@ EOF
 
 
 # 最低限セルフホストに必要なところだけ実装する
-# 関数ごとにローカル変数を管理するようにしないとバグるかも
 
 # バイナリ作る時のうざい警告直す
 # /usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack
