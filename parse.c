@@ -294,7 +294,7 @@ Token *tokenize(char *p) {
         }
 
         // multi-letter punctuator
-        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=") || startswith(p, "++") || startswith(p, "--")) {
+        if (startswith(p, "==") || startswith(p, "!=") || startswith(p, "<=") || startswith(p, ">=") || startswith(p, "++") || startswith(p, "--") || startswith(p, "+=") || startswith(p, "-=")) {
             cur = new_token(TK_RESERVED, cur, p, 2);
             p += 2;
             continue;
@@ -531,6 +531,16 @@ Node *expr() {
 // assign     = equality ("=" assign)?
 Node *assign() {
     Node *node = equality();
+    if (consume("+=")) {
+        node->is_lefthand = 1;
+        Node *right_node = new_binary(ND_ADD, node, equality(), node->ty);
+        node = new_binary(ND_ASSIGN, node, right_node, node->ty);
+    }
+    if (consume("-=")) {
+        node->is_lefthand = 1;
+        Node *right_node = new_binary(ND_SUB, node, equality(), node->ty);
+        node = new_binary(ND_ASSIGN, node, right_node, node->ty);
+    }
     if (consume("=")) {
         node->is_lefthand = 1;
         node = new_binary(ND_ASSIGN, node, assign(), NULL);

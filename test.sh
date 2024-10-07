@@ -427,17 +427,43 @@ int main() {
 EOF
 )"
 
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0;
+  i += 1;
+}
+EOF
+)"
+
+assert 2 "$(cat <<EOF
+int main() {
+  int i;
+  i = 3;
+  i -= 1;
+}
+EOF
+)"
+
+assert 2 "$(cat <<EOF
+int main() {
+  int i;
+  i = 0;
+  i += 1;
+  i += i;
+}
+EOF
+)"
+
 # assert 1 "$(cat <<EOF
 # int main() {
 # }
 # EOF
 # )"
 
-# 単項演算子(前置と後置)
-# += -=
-# 初期化式
 # グローバル変数
 # 文字列
+# 初期化式(+プロトタイプ宣言)
 # 代入の時型チェック
 # sizeofはarrayのbasesizeとlen見れないか？
 
