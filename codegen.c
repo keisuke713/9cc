@@ -3,6 +3,8 @@
 
 #include "9cc.h"
 
+int type_size(Type *type);
+
 // Nodeのデータが4byteの場合32bitレジスタ、そうでない場合は64bitレジスタを使いたいため
 char gen_prefix_register(Node *node) {
     if (node->ty == NULL || node->ty->kind == PTR)
@@ -16,6 +18,15 @@ void gen_lval(Node *node) {
     // アドレスを参照してをstackに積む
     if (node->kind == ND_DEREF) {
         gen(node);
+        return;
+    }
+
+    if (node->kind == ND_GVAR) {
+        // オフセットの計算
+        gen(node->lhs);
+        printf("    pop rax\n");
+        printf("    lea rax, [%.*s+rax]\n", node->name_len, node->name);
+        printf("    push rax\n");
         return;
     }
 
@@ -101,6 +112,13 @@ void gen(Node *node) {
             return;
         }
         case ND_LVAR: {
+            gen_lval(node);
+            printf("    pop rax\n");
+            printf("    mov %cax, [rax]\n", gen_prefix_register(node));
+            printf("    push rax\n");
+            return;
+        }
+        case ND_GVAR: {
             gen_lval(node);
             printf("    pop rax\n");
             printf("    mov %cax, [rax]\n", gen_prefix_register(node));
@@ -384,6 +402,11 @@ void gen(Node *node) {
         }
         case ND_POST_DEC: {
             post_modify(node);
+            return;
+        }
+        case ND_DEC_GVAR: {
+            printf("%.*s:\n", node->name_len, node->name);
+            printf("    .zero %d\n", type_size(node->ty));
             return;
         }
     }

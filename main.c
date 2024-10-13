@@ -3,7 +3,8 @@
 
 char *user_input;
 extern Token *token;
-extern Node *code[100];
+extern Node *text[100];
+extern Node *bss[100];
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -20,9 +21,15 @@ int main(int argc, char **argv) {
     printf(".intel_syntax noprefix\n");
     printf(".globl main\n");
 
-    // 先頭の式から順にコード生成
-    for (int i=0; code[i]; i++) {
-        gen(code[i]);
+    // 実行可能なコードを生成
+    printf(".text\n");
+    for (int i=0; text[i]; i++) {
+        gen(text[i]);
+    }
+    // 未初期化のグローバル変数
+    printf(".bss\n");
+    for (int i=0; bss[i]; i++) {
+        gen(bss[i]);
     }
 
     return 0;

@@ -455,14 +455,114 @@ int main() {
 EOF
 )"
 
+assert 11 "$(cat <<EOF
+int foo;
+
+int main() {
+  foo = 11;
+}
+EOF
+)"
+
+assert 2 "$(cat <<EOF
+int foo;
+
+int main() {
+  foo = 1;
+
+  int foo;
+  foo = 2;
+
+  foo;
+}
+EOF
+)"
+
+assert 3 "$(cat <<EOF
+int arr[2];
+
+int main() {
+  arr[0] = 1;
+  arr[1] = 2;
+  arr[0] + arr[1];
+}
+EOF
+)"
+
+assert 6 "$(cat <<EOF
+int arr[3];
+
+int main() {
+  int i;
+  while (i<3) {
+    arr[i++] = i; 
+  }
+
+  int sum;
+  sum = 0; 
+  for (i = 0; i < 3; i++) {
+    sum += arr[i];
+  }
+  sum;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int *arr[1];
+
+int main() {
+  int x;
+  x = 1;
+
+  int *xx;
+  xx = &x;
+
+  arr[0] = xx;
+
+  *(arr[0]);
+}
+EOF
+)"
+
+assert 6 "$(cat <<EOF
+int *arr[3];
+
+int main() {
+  int x;
+  x = 1;
+
+  int y;
+  y = 2;
+
+  int z;
+  z = 3;
+
+  int *xx;
+  xx = &x;
+
+  int *yy;
+  yy = &y;
+
+  int *zz;
+  zz = &z;
+
+  arr[0] = xx;
+  arr[1] = yy;
+  arr[2] = zz;
+
+  *(arr[0]) + *(arr[1]) + *(arr[2]);
+}
+EOF
+)"
+
 # assert 1 "$(cat <<EOF
 # int main() {
 # }
 # EOF
 # )"
 
-# グローバル変数
-# 文字列
+文字列
 # 初期化式(+プロトタイプ宣言)
 # 代入の時型チェック
 # sizeofはarrayのbasesizeとlen見れないか？
@@ -479,3 +579,7 @@ EOF
 # /usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker
 
 echo OK
+
+# gcc -static -g -o tmp tmp.s
+# textとbssセクションを出す
+# objdump -d -s -j .text -j .bss -M intel a.out > test.o

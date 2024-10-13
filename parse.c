@@ -80,6 +80,8 @@ Func *funcs;
 Node *scope_node;
 // 関数全体で見た時の変数のオフセット
 int n_offset_within_func;
+// グローバル変数
+GVar *gvars;
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty);
 
@@ -190,6 +192,24 @@ LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty) {
 LVar *find_lvar(Token *tok, Node *func) {
     for (LVar *var = func->locals; var; var = var->next) {
         if (var->len == tok->len && !memcmp(tok->str, var->name, var->len))
+            return var;
+    }
+    return NULL;
+}
+
+GVar *new_gvar(GVar *next, char *name, int len, Type *ty) {
+    GVar *gvar = calloc(1, sizeof(GVar));
+    gvar->next = next;
+    gvar->name = name;
+    gvar->len = len;
+    gvar->ty = ty;
+
+    return gvar;
+}
+
+GVar *find_gvar(Token *tok) {
+    for (GVar *var = gvars; var; var = var->next) {
+        if (var->len == tok->len && !(memcmp(tok->str, var->name, var->len)))
             return var;
     }
     return NULL;
@@ -320,6 +340,20 @@ Token *tokenize(char *p) {
     return head.next;
 }
 
+// 型の解析
+// 型でない場合はnilを返す
+Type *parse_type() {
+    if (!consume("int"))
+        return NULL;
+    Type *intTy = new_type(INT, NULL);
+    Type *currTy = intTy;
+    while(consume("*")) {
+        Type *ptrTy = new_type(PTR, currTy);
+        currTy = ptrTy;
+    }
+    return currTy;
+}
+
 void program();
 Node *func();
 Node *stmt();
@@ -332,97 +366,110 @@ Node *mul();
 Node *unary();
 Node *primary();
 
-Node *code[100];
+Node *text[100];
+Node *bss[100];
 
 // program = func*
 void program() {
-    int i = 0;
+    int gvar_i = 0;
+    int text_i = 0;
     while (!at_eof()) {
-        code[i++] = func();
+        Node *node = func();
+        if (node->kind == ND_DEC_GVAR)
+            bss[gvar_i++] = node;
+        else
+            text[text_i++] = node;
     }
-    code[i] = NULL;
+    text[text_i] = NULL;
+    bss[gvar_i] = NULL;
 }
 
 // func = stmt*
 Node *func() {
     Node *node = calloc(1, sizeof(Node));
-    Func *f = find_func(token);
-    if (f) {
-        error_at(token->str, "すでに定義されている関数です");
-    }
-    node->kind = ND_FUNC;
-    scope_node = node;
-    if (!(consume("int")))
+    Type *currTy = parse_type();
+    if (!currTy)
         error_at(token->str, "型定義ではありません");
-    Type *intTy = new_type(INT, NULL);
-    Type *currTy = intTy;
-    while(consume("*")) {
-        Type *ptrTy = new_type(PTR, currTy);
-        currTy = ptrTy;
-    }
     Token *tok = consume_ident();
     if (!tok) {
-        error_at(token->str, "関数名ではありません");
+        error_at(token->str, "識別子ではありません");
     }
     node->name = tok->str;
     node->name_len = tok->len;
     node->ty = currTy;
-    Func *func = new_func(funcs, tok->str, tok->len, currTy);
-    if (!consume("(")) {
-        error_at(token->str, "'('ではありません");
-    }
-    // 引数のセット
-    Node *arguDummy = calloc(1, sizeof(Node));
-    Node *curr = arguDummy;
-    int n_args = 1;
-    // ローカル変数を管理する構造体を初期化
-    n_offset_within_func = 0;
-    scope_node->locals = new_lvar(NULL, "dummy", 0, n_offset_within_func, NULL);
-    while (!consume(")")) {
-        if (!consume("int"))
-            error_at(token->str, "型定義ではありません");
-        Type *intTy = calloc(1, sizeof(Type));
-        intTy->kind = INT;
-        Type *currTy = intTy;
-        while(consume("*")) {
-            Type *ptrTy = calloc(1, sizeof(Type));
-            ptrTy->kind = PTR;
-            ptrTy->ptr_to = currTy;
-            currTy = ptrTy;
-        }
-        Token *tok = consume_ident();
-        if (tok) {
-            LVar *lvar = find_lvar(tok, scope_node);
-            Node *arg = calloc(1, sizeof(Node));
-            if (lvar) {
-                arg->offset = lvar->offset;
-            } else {
-                if (consume("[")) {
-                    // 引数の配列はポインタとして扱うため
-                    Type *ptrTy = new_type(PTR, currTy);
-                    currTy = ptrTy;
-                    // 引数定義時に要素数は指定しない想定
-                    expect("]");
-                }
-                lvar = new_lvar(scope_node->locals, tok->str, tok->len, n_offset_within_func + type_size(currTy), currTy);
-                n_offset_within_func += type_size(currTy);
-                arg->offset = lvar->offset;
-                arg->ty = currTy;
-                scope_node->locals = lvar;
-            }
-            curr->next = arg;
-            curr = curr->next;
-        }
 
-        // (1)ならトークンはそのまま ')' だし
-        // (1, 2)ならトークンは '2' になる
-        consume(",");
+    // 関数の場合
+    if (consume("(")) {
+        Func *f = find_func(token);
+        if (f)
+            error_at(token->str, "すでに定義されている関数です");
+        node->kind = ND_FUNC;
+        scope_node = node;
+        Func *func = new_func(funcs, tok->str, tok->len, currTy);
+
+        // 引数のセット
+        Node *arguDummy = calloc(1, sizeof(Node));
+        Node *curr = arguDummy;
+        int n_args = 1;
+        // ローカル変数を管理する構造体を初期化
+        n_offset_within_func = 0;
+        scope_node->locals = new_lvar(NULL, "dummy", 0, n_offset_within_func, NULL);
+        while (!consume(")")) {
+            Type *currTy = parse_type();
+            if (!currTy)
+                error_at(token->str, "型定義ではありません");
+            Token *tok = consume_ident();
+            if (tok) {
+                LVar *lvar = find_lvar(tok, scope_node);
+                Node *arg = calloc(1, sizeof(Node));
+                if (lvar) {
+                    arg->offset = lvar->offset;
+                } else {
+                    if (consume("[")) {
+                        // 引数の配列はポインタとして扱うため
+                        Type *ptrTy = new_type(PTR, currTy);
+                        currTy = ptrTy;
+                        // 引数定義時に要素数は指定しない想定
+                        expect("]");
+                    }
+                    lvar = new_lvar(scope_node->locals, tok->str, tok->len, n_offset_within_func + type_size(currTy), currTy);
+                    n_offset_within_func += type_size(currTy);
+                    arg->offset = lvar->offset;
+                    arg->ty = currTy;
+                    scope_node->locals = lvar;
+                }
+                curr->next = arg;
+                curr = curr->next;
+            }
+
+            // (1)ならトークンはそのまま ')' だし
+            // (1, 2)ならトークンは '2' になる
+            consume(",");
+        }
+        node->args = arguDummy->next;
+        // 関数本体のパース
+        if (token->next != NULL && !(memcmp(token->str, "{", token->len)))
+            // プロトタイプどうしましょうかね
+            node->body = stmt();
     }
-    node->args = arguDummy->next;
-    if (token->next != NULL && !(memcmp(token->str, "{", token->len)))
-        // 関数本体がブロックじゃないケースある？？
-        // 関数呼び出しで次が ';' になるケースとかか
-        node->body = stmt();
+    // グローバル変数の場合
+    else {
+        if (!gvars)
+            gvars = new_gvar(NULL, "dummy", 5, NULL);
+        node->kind = ND_DEC_GVAR;
+        GVar *gvar = find_gvar(tok);
+        if (gvar)
+            error_at(tok->str, "すでに定義されているグローバル変数です");
+        if (consume("[")) {
+            Type *arrTy = new_type(ARRAY, NULL);
+            arrTy->base = node->ty;
+            arrTy->array_size = expect_number();
+            expect("]");
+            node->ty = arrTy;
+        }
+        gvars = new_gvar(gvars, tok->str, tok->len, node->ty);
+        expect(";");
+    }
     return node;
 }
 
@@ -717,16 +764,8 @@ Node *unary() {
 //         | ident ( "(" ")")
 //         | "(" expr ")"
 Node *primary() {
-    if (consume("int")) {
-        Type *intTy = calloc(1, sizeof(Type));
-        intTy->kind = INT;
-        Type *curr = intTy;
-        while(consume("*")) {
-            Type *ptrTy = calloc(1, sizeof(Type));
-            ptrTy->kind = PTR;
-            ptrTy->ptr_to = curr;
-            curr = ptrTy;
-        }
+    Type *curr = parse_type();
+    if (curr) {
         Token *tok = consume_ident();
         if (tok) {
             Node *node = calloc(1, sizeof(Node));
@@ -817,15 +856,32 @@ Node *primary() {
                     return new_binary(ND_DEREF, add_node, NULL, add_node->ty->ptr_to);
                 }
             }
+            GVar *gvar = find_gvar(tok);
+            if (gvar) {
+                Node *arrGvar = calloc(1, sizeof(Node));
+                arrGvar->name = gvar->name;
+                arrGvar->name_len = gvar->len;
+                arrGvar->kind = ND_GVAR;
+                arrGvar->ty = gvar->ty->base;
+                Node *i_node = expr();
+                Node *i_mul_node;
+                if (arrGvar->ty->kind == INT)
+                    i_mul_node = new_binary(ND_MUL, i_node, new_num(4), new_type(INT, NULL));
+                else
+                    i_mul_node = new_binary(ND_MUL, i_node, new_num(8), new_type(INT, NULL));
+                arrGvar->lhs = i_mul_node;
+                expect("]");
+                return arrGvar;
+            }
             error_at(token->str, "宣言されていません");
         }
         Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LVAR;
 
         LVar *lvar;
         for (Node *scope = scope_node; scope; scope = scope->outer_scope) {
             lvar = find_lvar(tok, scope);
             if (lvar) {
+                node->kind = ND_LVAR;
                 node->offset = lvar->offset;
                 // 配列の場合先頭要素のアドレスに変換
                 if (lvar->ty->kind == ARRAY) {
@@ -837,6 +893,20 @@ Node *primary() {
                 }
                 return node;
             }
+        }
+        GVar *gvar = find_gvar(tok);
+        if (gvar) {
+            node->name = gvar->name;
+            node->name_len = gvar->len;
+            node->kind = ND_GVAR;
+            // 配列のアクセスの時にオフセットを計算する必要があるので
+            // 配列以外のグローバル変数でも0を指定する
+            node->lhs = new_num(0);
+            if (gvar->ty->kind == ARRAY) {
+                node->ty = gvar->ty->base;
+                node = new_binary(ND_ADDR, node, NULL, new_type(PTR, node->ty));
+            }
+            return node;
         }
         // すでに宣言はされているはずなので、ここに入ってきたら未定義の変数でエラー
         error_at(token->str, "宣言されていません");

@@ -52,6 +52,16 @@ struct LVar {
     Type *ty; // 型情報
 };
 
+typedef struct GVar GVar;
+
+// グローバル変数の型
+struct GVar {
+    GVar *next; // 次の変数かNULL
+    char *name; // 変数名
+    int len;    // 変数名の長さ
+    Type *ty;   // 型情報
+};
+
 // 抽象構文木のノードの種類
 typedef enum {
     ND_ADD,      // +
@@ -69,7 +79,9 @@ typedef enum {
     ND_NUM,      // number
     ND_ASSIGN,   // =
     ND_DECL,     // 宣言
+    ND_DEC_GVAR, // グローバル変数宣言
     ND_LVAR,     // local variable
+    ND_GVAR,     // global variable
     ND_RETURN,   // return statement
     ND_IF,       // if
     ND_ELSE,     // else
