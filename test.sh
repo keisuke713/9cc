@@ -556,13 +556,138 @@ int main() {
 EOF
 )"
 
+assert 1 "$(cat <<EOF
+int main() {
+  char x[1];
+  x[0] = 1;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  char a;
+  char b;
+
+  a = 1;
+  b = 2;
+
+  a;
+}
+EOF
+)"
+
+assert 7 "$(cat <<EOF
+int main() {
+  char x[2];
+  x[0] = -1;
+  x[1] = 5;
+
+  int y;
+  y = 3;
+
+  x[0] + x[1] + y;
+}
+EOF
+)"
+
+assert 7 "$(cat <<EOF
+int main() {
+  char x[5];
+  x[0] = -1;
+  x[1] = 2;
+  x[2] = 3;
+  x[3] = 4;
+  x[4] = 5;
+
+  int y;
+  y = 3;
+
+  x[0] + x[4] + y;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+char x[1];
+
+int main() {
+  x[0] = 1;
+
+  x[0];
+}
+EOF
+)"
+
+assert 6 "$(cat <<EOF
+char x[3];
+
+int main() {
+  x[0] = 1;
+  x[1] = 2;
+  x[2] = 3;
+
+  return x[0] + x[1] + x[2];
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  char c;
+  c = 1;
+
+  c;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+char c;
+int main() {
+  c = 1;
+
+  c;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  int i;
+  i = 1024;
+
+  char c;
+  c = 1;
+
+  i;
+  c;
+
+  c == 1;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  char c;
+  c = 1;
+
+  c == 1;
+}
+EOF
+)"
+
 # assert 1 "$(cat <<EOF
 # int main() {
 # }
 # EOF
 # )"
 
+echo OK
+
 文字列
+
 # 初期化式(+プロトタイプ宣言)
 # 代入の時型チェック
 # sizeofはarrayのbasesizeとlen見れないか？
@@ -578,7 +703,6 @@ EOF
 # /usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack
 # /usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker
 
-echo OK
 
 # gcc -static -g -o tmp tmp.s
 # textとbssセクションを出す

@@ -5,11 +5,45 @@
 
 int type_size(Type *type);
 
-// Nodeのデータが4byteの場合32bitレジスタ、そうでない場合は64bitレジスタを使いたいため
-char gen_prefix_register(Node *node) {
-    if (node->ty == NULL || node->ty->kind == PTR)
-        return 'r';
-    return 'e';
+// 書き込み時のsrcレジスタを返す
+// 汎用レジスタの種類と型から使用するレジスタを出す
+// 1byteのデータを読み込み時は上位56bitをクリアするためにmovsxとraxを使う関係上この関数は使えない
+char *gen_register(RegisterKind kind, Node *node) {
+    int size = type_size(node->ty);
+
+    if (kind == RAX) {
+        if (size == 1)
+            return "al";
+        if (size == 4)
+            return "eax";
+        if (size == 8)
+            return "rax";
+    }
+    if (kind == RDI) {
+        if (size == 1)
+            return "dil";
+        if (size == 4)
+            return "edi";
+        if (size == 8)
+            return "rdi";
+    }
+    return NULL;
+}
+
+// srcのアドレスはraxに入っている前提
+char *read_inst(Type *t) {
+    int size = type_size(t);
+
+    // 符号拡張を行うのでdstは64bitレジスタ
+    // movを使って8bitの値を読み込む場合先頭56bitがリセットされずバグになる
+    if (size == 1)
+        return "movsx rax, BYTE PTR [rax]\n";
+    // dstにraxを使うと32bitのデータをどこにロードすれば良いか分からずエラーになるのでeaxを指定
+    if (size == 4)
+        return "mov eax, DWORD PTR [rax]\n";
+    if (size == 8)
+        return "mov rax, QWORD PTR [rax]\n";
+    return NULL;
 }
 
 // 書き込み先のアドレスをpushする
@@ -53,7 +87,7 @@ void pre_modify(Node *node) {
     // 更新した値を書き込む
     printf("    pop rdi\n");
     printf("    pop rax\n");
-    printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
+    printf("    mov [rax], %s\n", gen_register(RDI, node->lhs));
     // 更新された値をスタックに積む
     printf("    push rdi\n");
 }
@@ -77,7 +111,7 @@ void post_modify(Node *node) {
     // 更新した値を書き込む
     printf("    pop rdi\n");
     printf("    pop rax\n");
-    printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
+    printf("    mov [rax], %s\n", gen_register(RDI, node->lhs));
     // 元の値が式の結果なので計算後の値はスタックには積まない
 }
 
@@ -114,14 +148,14 @@ void gen(Node *node) {
         case ND_LVAR: {
             gen_lval(node);
             printf("    pop rax\n");
-            printf("    mov %cax, [rax]\n", gen_prefix_register(node));
+            printf("    %s", read_inst(node->ty));
             printf("    push rax\n");
             return;
         }
         case ND_GVAR: {
             gen_lval(node);
             printf("    pop rax\n");
-            printf("    mov %cax, [rax]\n", gen_prefix_register(node));
+            printf("    %s", read_inst(node->ty));
             printf("    push rax\n");
             return;
         }
@@ -131,7 +165,7 @@ void gen(Node *node) {
 
             printf("    pop rdi\n");
             printf("    pop rax\n");
-            printf("    mov [rax], %cdi\n", gen_prefix_register(node->lhs));
+            printf("    mov [rax], %s\n", gen_register(RDI, node->lhs));
             printf("    push rdi\n");
             return;
         }
@@ -353,7 +387,7 @@ void gen(Node *node) {
                 // popして該当のアドレスに変数の値を入れる
                 printf("    pop rax\n"); // アドレスが入る
                 printf("    pop rdi\n"); // 変数の値が入る
-                printf("    mov [rax], %cdi\n", gen_prefix_register(curr_arg));
+                printf("    mov [rax], %s\n", gen_register(RDI, curr_arg));
                 printf("    push rdi\n");
 
                 curr_arg = curr_arg->next;

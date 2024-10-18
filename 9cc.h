@@ -6,6 +6,11 @@ typedef enum {
     TK_SIZEOF,   // sizeof
 } TokenKind;
 
+typedef enum {
+    RAX,
+    RDI,
+} RegisterKind;
+
 typedef struct Token Token;
 
 struct Token {
@@ -17,6 +22,7 @@ struct Token {
 };
 
 typedef enum {
+    CHAR, 
     INT,
     PTR,
     ARRAY,

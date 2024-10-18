@@ -11,6 +11,9 @@ int type_size(Type *type) {
     if (type == NULL)
         return 0;
 
+    if (type->kind == CHAR)
+        return 1;
+
     if (type->kind == INT)
         return 4;
 
@@ -18,10 +21,7 @@ int type_size(Type *type) {
         return 8;
 
     if (type->kind == ARRAY)
-        if (type->base->kind == INT)
-            return 4 * type->array_size;
-        else if (type->base->kind == PTR)
-            return 8 * type->array_size;
+        return type_size(type->base) * type->array_size;
 }
 
 Type *new_type(TypeKind kind, Type *ptr_to) {
@@ -247,6 +247,12 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "char", 4) == 0 && !is_alnum(p[4])) {
+            cur = new_token(TK_RESERVED, cur, "char", 4);
+            p += 4;
+            continue;
+        }
+
         if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6])) {
             cur = new_token(TK_RESERVED, cur, "return", 6);
             p += 6;
@@ -343,15 +349,21 @@ Token *tokenize(char *p) {
 // 型の解析
 // 型でない場合はnilを返す
 Type *parse_type() {
-    if (!consume("int"))
+    TypeKind kind;
+    if (consume("int"))
+        kind = INT;
+    else if(consume("char"))
+        kind = CHAR;
+    else
         return NULL;
-    Type *intTy = new_type(INT, NULL);
-    Type *currTy = intTy;
-    while(consume("*")) {
-        Type *ptrTy = new_type(PTR, currTy);
-        currTy = ptrTy;
+
+    Type *ty = new_type(kind, NULL);
+    Type *curr_ty = ty;
+    while (consume("*")) {
+        Type *ptr_ty = new_type(PTR, curr_ty);
+        curr_ty = ptr_ty;
     }
-    return currTy;
+    return curr_ty;
 }
 
 void program();
@@ -387,8 +399,8 @@ void program() {
 // func = stmt*
 Node *func() {
     Node *node = calloc(1, sizeof(Node));
-    Type *currTy = parse_type();
-    if (!currTy)
+    Type *curr_ty = parse_type();
+    if (!curr_ty)
         error_at(token->str, "型定義ではありません");
     Token *tok = consume_ident();
     if (!tok) {
@@ -396,7 +408,7 @@ Node *func() {
     }
     node->name = tok->str;
     node->name_len = tok->len;
-    node->ty = currTy;
+    node->ty = curr_ty;
 
     // 関数の場合
     if (consume("(")) {
@@ -405,7 +417,7 @@ Node *func() {
             error_at(token->str, "すでに定義されている関数です");
         node->kind = ND_FUNC;
         scope_node = node;
-        Func *func = new_func(funcs, tok->str, tok->len, currTy);
+        Func *func = new_func(funcs, tok->str, tok->len, curr_ty);
 
         // 引数のセット
         Node *arguDummy = calloc(1, sizeof(Node));
@@ -415,8 +427,8 @@ Node *func() {
         n_offset_within_func = 0;
         scope_node->locals = new_lvar(NULL, "dummy", 0, n_offset_within_func, NULL);
         while (!consume(")")) {
-            Type *currTy = parse_type();
-            if (!currTy)
+            Type *curr_ty = parse_type();
+            if (!curr_ty)
                 error_at(token->str, "型定義ではありません");
             Token *tok = consume_ident();
             if (tok) {
@@ -427,15 +439,15 @@ Node *func() {
                 } else {
                     if (consume("[")) {
                         // 引数の配列はポインタとして扱うため
-                        Type *ptrTy = new_type(PTR, currTy);
-                        currTy = ptrTy;
+                        Type *ptr_ty = new_type(PTR, curr_ty);
+                        curr_ty = ptr_ty;
                         // 引数定義時に要素数は指定しない想定
                         expect("]");
                     }
-                    lvar = new_lvar(scope_node->locals, tok->str, tok->len, n_offset_within_func + type_size(currTy), currTy);
-                    n_offset_within_func += type_size(currTy);
+                    lvar = new_lvar(scope_node->locals, tok->str, tok->len, n_offset_within_func + type_size(curr_ty), curr_ty);
+                    n_offset_within_func += type_size(curr_ty);
                     arg->offset = lvar->offset;
-                    arg->ty = currTy;
+                    arg->ty = curr_ty;
                     scope_node->locals = lvar;
                 }
                 curr->next = arg;
@@ -634,10 +646,7 @@ Node *overwrite_node(Node *node) {
         node->ty = node->lhs->ty;
 
         int mul;
-        if (node->lhs->ty->ptr_to->kind == INT)
-            mul = 4;
-        else
-            mul = 8;
+        mul = type_size(node->lhs->ty->ptr_to);
         Node *mul_node = new_num(mul);
         node->rhs = new_binary(ND_MUL, mul_node, node->rhs, new_type(INT, NULL));
         return node;
@@ -646,10 +655,7 @@ Node *overwrite_node(Node *node) {
         node->ty = node->rhs->ty;
 
         int mul;
-        if (node->rhs->ty->ptr_to->kind == INT)
-            mul = 4;
-        else
-            mul = 8;
+        mul = type_size(node->rhs->ty->ptr_to);
         Node *mul_node = new_num(mul);
         node->lhs = new_binary(ND_MUL, node->lhs, mul_node, new_type(INT, NULL));
         return node;
@@ -864,11 +870,7 @@ Node *primary() {
                 arrGvar->kind = ND_GVAR;
                 arrGvar->ty = gvar->ty->base;
                 Node *i_node = expr();
-                Node *i_mul_node;
-                if (arrGvar->ty->kind == INT)
-                    i_mul_node = new_binary(ND_MUL, i_node, new_num(4), new_type(INT, NULL));
-                else
-                    i_mul_node = new_binary(ND_MUL, i_node, new_num(8), new_type(INT, NULL));
+                Node *i_mul_node = new_binary(ND_MUL, i_node, new_num(type_size(arrGvar->ty)), new_type(INT, NULL));
                 arrGvar->lhs = i_mul_node;
                 expect("]");
                 return arrGvar;
@@ -899,6 +901,7 @@ Node *primary() {
             node->name = gvar->name;
             node->name_len = gvar->len;
             node->kind = ND_GVAR;
+            node->ty = gvar->ty;
             // 配列のアクセスの時にオフセットを計算する必要があるので
             // 配列以外のグローバル変数でも0を指定する
             node->lhs = new_num(0);
