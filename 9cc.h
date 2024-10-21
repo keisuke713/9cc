@@ -4,6 +4,7 @@ typedef enum {
     TK_NUM,      // 整数トークン
     TK_EOF,      // 入力の終わりを表すトークン
     TK_SIZEOF,   // sizeof
+    TK_LITERAL,  // string literal
 } TokenKind;
 
 typedef enum {
@@ -83,9 +84,11 @@ typedef enum {
     ND_LT,       // <
     ND_LE,       // <=
     ND_NUM,      // number
+    ND_STR,      // string
     ND_ASSIGN,   // =
     ND_DECL,     // 宣言
     ND_DEC_GVAR, // グローバル変数宣言
+    ND_DEC_RO,   // dec for rodata
     ND_LVAR,     // local variable
     ND_GVAR,     // global variable
     ND_RETURN,   // return statement
@@ -111,6 +114,8 @@ struct Node {
     Node *lhs; // 左辺
     Node *rhs; // 右辺
     int val; // kindがND_NUMの時のみ
+    char *str_val; // for string
+    int str_len;
     int offset; // kindがND_LVARの時のみ
 
     Node *init;  // for文の初期化式
@@ -123,8 +128,8 @@ struct Node {
 
     Node *next; // 複文用
 
-    char *name; // 関数名
-    int name_len; // 関数名の長さ
+    char *name; // func or variable name
+    int name_len;
 
     Node *args; // 関数の引数
     Node *body; // 関数の中身
@@ -134,6 +139,8 @@ struct Node {
 
     Node *outer_scope; // 一つ外側のスコープ
     LVar *locals; // スコープ内の変数
+
+    int n_lc_offset; // for string literal
 };
 
 Node *new_node(NodeKind kind);

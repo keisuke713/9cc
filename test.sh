@@ -117,7 +117,7 @@ assert 1 "int main() { int x; int *y; int **z; x = 5; y = &x; z = &y; **z = 1; x
 assert 2 "int main() { int x; int xx; x = 1; xx = 2; int *y; int **z; y = &x; z = &y; *z = &xx; **z; }"
 assert 1 "int foo(int *x) { *x = 1; } int main() { int x; x = 2; foo(&x); x; }"
 assert 3 "int foo(int *x, int y) { *x = 1 + y; } int main() { int x; x = 1; foo(&x, 2); x; }"
-assert 2 "int foo(int **x, int *y) { *x = y; } int main() { int x; int xx; int *y; int **z; x = 1; x = 2; y = &x; z = &y; foo(z, &x2); **z; }"
+assert 2 "int foo(int **x, int *y) { *x = y; } int main() { int x; int xx; int *y; int **z; x = 1; xx = 2; y = &x; z = &y; foo(z, &xx); **z; }"
 assert 1 "int foo(int **x, int y) { **x = y; } int main() { int x; int *y; x = 2; y = &x; foo(&y, 1); x; }"
 
 assert 1 "int main() { int x; int y; int *z; x = 1; y = 2; z = &y; z = z + 1; *z; }"
@@ -678,6 +678,161 @@ int main() {
 EOF
 )"
 
+assert 97 "$(cat <<EOF
+int main() {
+  char *str;
+  str = "abc";
+  str[0];
+}
+EOF
+)"
+
+assert 98 "$(cat <<EOF
+int main() {
+  char *str;
+  str = "abc";
+  str[1];
+}
+EOF
+)"
+
+assert 99 "$(cat <<EOF
+int main() {
+  char *str;
+  str = "abc";
+  str = "cba";
+  str[0];
+}
+EOF
+)"
+
+assert 0 "$(cat <<EOF
+int main() {
+  "kei" == "kei";
+}
+EOF
+)"
+
+assert 97 "$(cat <<EOF
+char foo(char *str) {
+  return str[0];
+}
+
+int main() {
+  foo("abc");
+}
+EOF
+)"
+
+assert 0 "$(cat <<EOF
+int strncmp(char *s1, char *s2) {
+  return s1 == s2;
+}
+
+int main() {
+  strncmp("kei", "kee");
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int strncmp(char *str1, char *str2, int len) {
+  int i;
+  for (i = 0; i < len; i++) {
+    if (str1[i] < str2[i])
+      return -1;
+    if (str1[i] > str2[i])
+      return 1;
+  }
+  return 0;
+}
+
+int main() {
+  strncmp("kei", "kee", 3);
+}
+EOF
+)"
+
+assert 97 "$(cat <<EOF
+int main() {
+  char *str1;
+  str1 = "abc";
+
+  str1[0];
+}
+EOF
+)"
+
+# if rax store -1(0xffffffffffffffff), but returned lower 8bit, which is 255
+assert 255 "$(cat <<EOF
+int main() {
+  char *str1;
+  str1 = "kei";
+
+  char *str2;
+  str2 = "oei";
+
+  if (str1[0] < str2[0])
+    return -1;
+  return 10;
+}
+EOF
+)"
+
+# if rax store -1(0xffffffffffffffff), but returned lower 8bit, which is 255
+assert 255 "$(cat <<EOF
+int strncmp(char *str1, char *str2, int len) {
+  int i;
+  for (i = 0; i < len; i++) {
+    if (str1[i] < str2[i])
+      return -1;
+    if (str1[i] > str2[i])
+      return 1;
+  }
+  return 0;
+}
+
+int main() {
+  char *str;
+  str = "kei";
+  strncmp(str, "oei", 3);
+}
+EOF
+)"
+
+assert 0 "$(cat <<EOF
+int strncmp(char *str1, char *str2, int len) {
+  int i;
+  for (i = 0; i < len; i++) {
+    if (str1[i] < str2[i])
+      return -1;
+    if (str1[i] > str2[i])
+      return 1;
+  }
+  return 0;
+}
+
+int main() {
+  char *str;
+  str = "kei";
+  strncmp(str, "kei", 3);
+}
+EOF
+)"
+
+assert 97 "$(cat <<EOF
+char *hoge() {
+  return "abc";
+}
+
+int main() {
+  char *str;
+  str = hoge();
+  str[0];
+}
+EOF
+)"
+
 # assert 1 "$(cat <<EOF
 # int main() {
 # }
@@ -686,7 +841,7 @@ EOF
 
 echo OK
 
-文字列
+after that char literal like 'a'
 
 # 初期化式(+プロトタイプ宣言)
 # 代入の時型チェック
@@ -707,3 +862,7 @@ echo OK
 # gcc -static -g -o tmp tmp.s
 # textとbssセクションを出す
 # objdump -d -s -j .text -j .bss -M intel a.out > test.o
+# objdump -d -s -j .text -j .text -j .bss -M intel a.out > test.o
+
+# compile but assemble
+# cc -S hoge.c

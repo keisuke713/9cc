@@ -82,6 +82,8 @@ Node *scope_node;
 int n_offset_within_func;
 // グローバル変数
 GVar *gvars;
+// string literal
+int n_lc_offset = 0;
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty);
 
@@ -307,11 +309,22 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (*p == 34) {
+            char *start = p;
+            int len = 0;
+            while (('a' <= *p && *p <= 'z') || '"' == *p) {
+                p++;
+                len++;
+            }
+            cur = new_token(TK_LITERAL, cur, start, len);
+            continue;
+        }
+
         if (('a' <= *p && *p <= 'z') || '_' == *p) {
             // pは進んでいくのでスタート時点のアドレスを保持する
             char *start = p;
             int len = 0;
-            while (('a' <= *p && *p <= 'z') || '_' == *p) {
+            while (('a' <= *p && *p <= 'z') || ('0' <= *p && *p <= '9') || '_' == *p) {
                 len++;
                 p++;
             }
@@ -378,22 +391,27 @@ Node *mul();
 Node *unary();
 Node *primary();
 
+// nessecarry?
 Node *text[100];
 Node *bss[100];
+Node *rodata[100];
+int rodata_i = 0;
 
 // program = func*
 void program() {
-    int gvar_i = 0;
+    int bss_i = 0;
     int text_i = 0;
+
     while (!at_eof()) {
         Node *node = func();
         if (node->kind == ND_DEC_GVAR)
-            bss[gvar_i++] = node;
+            bss[bss_i++] = node;
         else
             text[text_i++] = node;
     }
     text[text_i] = NULL;
-    bss[gvar_i] = NULL;
+    bss[bss_i] = NULL;
+    rodata[rodata_i] = NULL;
 }
 
 // func = stmt*
@@ -920,6 +938,26 @@ Node *primary() {
         Node *node = expr();
         expect(")");
         return node;
+    }
+
+    if (token->kind == TK_LITERAL) {
+        // to put string in rodata section
+        Node *dec_node = calloc(1, sizeof(Node));
+        dec_node->kind = ND_DEC_RO;
+        dec_node->str_val = token->str;
+        dec_node->str_len = token->len;
+        dec_node->n_lc_offset = n_lc_offset++;
+        dec_node->ty = new_type(PTR, new_type(CHAR, NULL));
+
+        rodata[rodata_i++] = dec_node;
+        Node *right_node = calloc(1, sizeof(Node));
+        right_node->kind = ND_STR;
+        right_node->n_lc_offset =  dec_node->n_lc_offset;
+        right_node->ty = new_type(PTR, new_type(CHAR, NULL));
+
+        token = token->next;
+
+        return right_node;
     }
 
     return new_num(expect_number());

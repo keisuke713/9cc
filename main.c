@@ -5,6 +5,7 @@ char *user_input;
 extern Token *token;
 extern Node *text[100];
 extern Node *bss[100];
+extern Node *rodata[100];
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -26,10 +27,17 @@ int main(int argc, char **argv) {
     for (int i=0; text[i]; i++) {
         gen(text[i]);
     }
+    printf("\n");
     // 未初期化のグローバル変数
     printf(".bss\n");
     for (int i=0; bss[i]; i++) {
         gen(bss[i]);
+    }
+    printf("\n");
+    // for rodata
+    printf(".section .rodata\n");
+    for (int i=0; rodata[i]; i++) {
+        gen(rodata[i]);
     }
 
     return 0;

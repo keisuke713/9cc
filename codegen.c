@@ -64,6 +64,12 @@ void gen_lval(Node *node) {
         return;
     }
 
+    if (node->kind == ND_STR) {
+        printf("    lea rax, [LC%d]\n", node->n_lc_offset);
+        printf("    push rax\n");
+        return;
+    }
+
     if (node->kind != ND_LVAR)
         error("代入の左辺値が変数ではありません");
 
@@ -157,6 +163,10 @@ void gen(Node *node) {
             printf("    pop rax\n");
             printf("    %s", read_inst(node->ty));
             printf("    push rax\n");
+            return;
+        }
+        case ND_STR: {
+            gen_lval(node);
             return;
         }
         case ND_ASSIGN: {
@@ -413,7 +423,7 @@ void gen(Node *node) {
                 return;
 
             printf("    pop rax\n");
-            printf("    mov rax, [rax]\n");
+            printf("    %s", read_inst(node->ty));
             printf("    push rax\n");
             return;
         }
@@ -441,6 +451,11 @@ void gen(Node *node) {
         case ND_DEC_GVAR: {
             printf("%.*s:\n", node->name_len, node->name);
             printf("    .zero %d\n", type_size(node->ty));
+            return;
+        }
+        case ND_DEC_RO: {
+            printf("LC%d:\n", node->n_lc_offset);
+            printf("    .string %.*s\n", node->str_len, node->str_val);
             return;
         }
     }
