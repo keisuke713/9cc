@@ -7,6 +7,297 @@
 
 #include "9cc.h"
 
+int c_to_i(char c) {
+    switch (c) {
+        case ' ': {
+            return 32;
+        }
+        case '!': {
+            return 33;
+        }
+        case '"': {
+            return 34;
+        }
+        case '#': {
+            return 35;
+        }
+        case '$': {
+            return 36;
+        }
+        case '%': {
+            return 37;
+        }
+        case '&': {
+            return 38;
+        }
+        case '\'': {
+            return 39;
+        }
+        case '(': {
+            return 40;
+        }
+        case ')': {
+            return 41;
+        }
+        case '*': {
+            return 42;
+        }
+        case '+': {
+            return 43;
+        }
+        case ',': {
+            return 44;
+        }
+        case '-': {
+            return 45;
+        }
+        case '.': {
+            return 46;
+        }
+        case '/': {
+            return 47;
+        }
+        case '0': {
+            return 48;
+        }
+        case '1': {
+            return 49;
+        }
+        case '2': {
+            return 50;
+        }
+        case '3': {
+            return 51;
+        }
+        case '4': {
+            return 52;
+        }
+        case '5': {
+            return 53;
+        }
+        case '6': {
+            return 54;
+        }
+        case '7': {
+            return 55;
+        }
+        case '8': {
+            return 56;
+        }
+        case '9': {
+            return 57;
+        }
+        case ':': {
+            return 58;
+        }
+        case ';': {
+            return 59;
+        }
+        case '<': {
+            return 60;
+        }
+        case '=': {
+            return 61;
+        }
+        case '>': {
+            return 62;
+        }
+        case '?': {
+            return 63;
+        }
+        case '@': {
+            return 64;
+        }
+        case 'A': {
+            return 65;
+        }
+        case 'B': {
+            return 66;
+        }
+        case 'C': {
+            return 67;
+        }
+        case 'D': {
+            return 68;
+        }
+        case 'E': {
+            return 69;
+        }
+        case 'F': {
+            return 70;
+        }
+        case 'G': {
+            return 71;
+        }
+        case 'H': {
+            return 72;
+        }
+        case 'I': {
+            return 73;
+        }
+        case 'J': {
+            return 74;
+        }
+        case 'K': {
+            return 75;
+        }
+        case 'L': {
+            return 76;
+        }
+        case 'M': {
+            return 77;
+        }
+        case 'N': {
+            return 78;
+        }
+        case 'O': {
+            return 79;
+        }
+        case 'P': {
+            return 80;
+        }
+        case 'Q': {
+            return 81;
+        }
+        case 'R': {
+            return 82;
+        }
+        case 'S': {
+            return 83;
+        }
+        case 'T': {
+            return 84;
+        }
+        case 'U': {
+            return 85;
+        }
+        case 'V': {
+            return 86;
+        }
+        case 'W': {
+            return 87;
+        }
+        case 'X': {
+            return 88;
+        }
+        case 'Y': {
+            return 89;
+        }
+        case 'Z': {
+            return 90;
+        }
+        case '[': {
+            return 91;
+        }
+        case '\\': {
+            return 92;
+        }
+        case ']': {
+            return 93;
+        }
+        case '^': {
+            return 94;
+        }
+        case '_': {
+            return 95;
+        }
+        case '`': {
+            return 96;
+        }
+        case 'a': {
+            return 97;
+        }
+        case 'b': {
+            return 98;
+        }
+        case 'c': {
+            return 99;
+        }
+        case 'd': {
+            return 100;
+        }
+        case 'e': {
+            return 101;
+        }
+        case 'f': {
+            return 102;
+        }
+        case 'g': {
+            return 103;
+        }
+        case 'h': {
+            return 104;
+        }
+        case 'i': {
+            return 105;
+        }
+        case 'j': {
+            return 106;
+        }
+        case 'k': {
+            return 107;
+        }
+        case 'l': {
+            return 108;
+        }
+        case 'm': {
+            return 109;
+        }
+        case 'n': {
+            return 110;
+        }
+        case 'o': {
+            return 111;
+        }
+        case 'p': {
+            return 112;
+        }
+        case 'q': {
+            return 113;
+        }
+        case 'r': {
+            return 114;
+        }
+        case 's': {
+            return 115;
+        }
+        case 't': {
+            return 116;
+        }
+        case 'u': {
+            return 117;
+        }
+        case 'v': {
+            return 118;
+        }
+        case 'w': {
+            return 119;
+        }
+        case 'x': {
+            return 120;
+        }
+        case 'y': {
+            return 121;
+        }
+        case 'z': {
+            return 122;
+        }
+        case '{': {
+            return 123;
+        }
+        case '|': {
+            return 124;
+        }
+        case '}': {
+            return 125;
+        }
+        case '~': {
+            return 126;
+        }
+    }
+    return 0;
+}
+
 int type_size(Type *type) {
     if (type == NULL)
         return 0;
@@ -134,8 +425,14 @@ void expect(char *op) {
 // 次のトークンが数値の場合、トークンを1つ進めてその数値を返す
 // それ以外の場合にはエラーを吐く
 int expect_number() {
-    if (token->kind != TK_NUM)
+    if (token->kind != TK_NUM && token->kind != TK_CHAR)
         error("数ではありません");
+    if (token->kind == TK_CHAR) {
+        int val = c_to_i(token->c_val);
+        token = token->next;
+        return val;
+    }
+
     int val = token->val;
     token = token->next;
     return val;
@@ -318,6 +615,13 @@ Token *tokenize(char *p) {
             }
             cur = new_token(TK_LITERAL, cur, start, len);
             continue;
+        }
+
+        if (*p == 39) {
+            cur = new_token(TK_CHAR, cur, ++p, 1);
+            cur->c_val = *p;
+            p += 2;
+            continue;;
         }
 
         if (('a' <= *p && *p <= 'z') || '_' == *p) {

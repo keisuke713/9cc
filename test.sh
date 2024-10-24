@@ -833,6 +833,103 @@ int main() {
 EOF
 )"
 
+assert 1 "$(cat <<EOF
+int main() {
+  char a1;
+  a1 = 'a';
+
+  char a2;
+  a2 = 'a';
+
+  return a1 == a2;
+}
+EOF
+)"
+
+assert 0 "$(cat <<EOF
+int main() {
+  char a;
+  a = 'a';
+
+  char b;
+  a = 'b';
+
+  return a == b;
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int foo(char c1, char c2) {
+  return c1 == c2;
+}
+
+int main() {
+  return foo('a', 'a');
+}
+EOF
+)"
+
+
+assert 97 "$(cat <<EOF
+int c_to_i(char c) {
+  switch (c) {
+    case 'a': {
+      return 97;
+    }
+    case 'b': {
+      return 98;
+    }
+  }
+  return 0;
+}
+
+int main() {
+  return c_to_i('a');
+}
+EOF
+)"
+
+assert 1 "$(cat <<EOF
+int main() {
+  char a;
+  a = 'a';
+  return 'a' <= a;
+}
+EOF
+)"
+
+assert 0 "$(cat <<EOF
+int main() {
+  char a;
+  a = 'a';
+  return 'a' < a;
+}
+EOF
+)"
+
+# '\\' はメモリ上一文字
+assert 1 "$(cat <<EOF
+int main() {
+  char a;
+  a = '\';
+  return a == '\';
+}
+EOF
+)"
+
+# '\'' ではなく '''?
+# cのコード内ででバックスラッシュ無くすとエラーになるからシェルの仕様、、？
+assert 39 "$(cat <<EOF
+int main() {
+  char a;
+  a = ''';
+  a;
+}
+EOF
+)"
+
+
 # assert 1 "$(cat <<EOF
 # int main() {
 # }
@@ -840,8 +937,6 @@ EOF
 # )"
 
 echo OK
-
-after that char literal like 'a'
 
 # 初期化式(+プロトタイプ宣言)
 # 代入の時型チェック
@@ -866,3 +961,6 @@ after that char literal like 'a'
 
 # compile but assemble
 # cc -S hoge.c
+
+# debug with argument
+# gdb --args ./9cc "int main() { 1; }"

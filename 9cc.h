@@ -2,6 +2,7 @@ typedef enum {
     TK_RESERVED, // 記号
     TK_IDENT,    // 識別子
     TK_NUM,      // 整数トークン
+    TK_CHAR,     // character token
     TK_EOF,      // 入力の終わりを表すトークン
     TK_SIZEOF,   // sizeof
     TK_LITERAL,  // string literal
@@ -18,6 +19,7 @@ struct Token {
     TokenKind kind; // トークンの型
     Token *next;    // 次の入力トークン
     int val;        // kindがTK_NUMの場合、その数値
+    char c_val;     // kindがTK_CHARの場合の値
     char *str;      // トークン文字列
     int len;        // トークンの長さ
 };
