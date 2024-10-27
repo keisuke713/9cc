@@ -149,7 +149,7 @@ Node *new_node(NodeKind kind);
 Node *new_binary(NodeKind kind, Node *lhs, Node *rhs, Type *ty);
 Node *new_num(int val);
 
-void error_at(char *loc, char *fmt, ...);
+void error_at(char *loc, char *msg);
 void error(char *fmt, ...);
 
 Token *tokenize(char *p);

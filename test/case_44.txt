@@ -1,0 +1,1 @@
+int main() { int foo; foo = 2; int bar; bar = 3; foo + bar; }

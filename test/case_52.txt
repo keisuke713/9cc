@@ -1,0 +1,1 @@
+int foo() { return 5; } int main() { int foo; if (1) { return foo(); } else { foo = 1; return foo; } }

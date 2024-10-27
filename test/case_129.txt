@@ -1,0 +1,1 @@
+int main() { int sum; int i; sum = 0; i = 5; while (0 < i) { sum = sum + i; i = i - 1; } sum; }

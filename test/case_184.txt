@@ -1,0 +1,9 @@
+char *hoge() {
+  return "abc";
+}
+
+int main() {
+  char *str;
+  str = hoge();
+  str[0];
+}

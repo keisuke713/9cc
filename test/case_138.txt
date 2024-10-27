@@ -1,0 +1,1 @@
+int main() { int sum; sum = 0; int i; for (i = 0; i < 5; i = i + 1) { switch (i) { case 1: { break; } case 2: { sum = sum + 2; } case 3: { break; } case 4: { sum = sum + 4; }}} sum; }

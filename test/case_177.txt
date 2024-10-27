@@ -1,0 +1,7 @@
+char foo(char *str) {
+  return str[0];
+}
+
+int main() {
+  foo("abc");
+}

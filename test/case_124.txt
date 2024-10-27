@@ -1,0 +1,1 @@
+int main() { int a[2]; int x; x = 0; a[x + 1] = 2;  a[x] = 1; a[x + 1]; }

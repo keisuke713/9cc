@@ -1,0 +1,9 @@
+int main() {
+  char a1;
+  a1 = 'a';
+
+  char a2;
+  a2 = 'a';
+
+  return a1 == a2;
+}

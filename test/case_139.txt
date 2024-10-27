@@ -1,0 +1,32 @@
+int main() {
+  int sum;
+  sum = 0;
+
+  int i;
+  i = 2;
+  switch (i) {
+    case 1: {
+      break;
+    }
+    case 2: {
+      int j;
+      for (j=1; j < 3; j = j + 1) {
+        sum = sum + j + i;
+      }
+      break;
+    }
+  }
+  switch(sum) {
+    case 7: {
+      switch (i) {
+        case 2: {
+          sum = sum + 2;
+          break;
+        }
+      }
+    }
+    case 8: {}
+    case 9: {}
+  }
+  sum;
+}

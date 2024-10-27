@@ -1,0 +1,1 @@
+int swap(int *x, int *y) {int *tmp; tmp = x; *x = *y; *y = *tmp; } int main() { int y; int x; y = 1; x = 2; swap(&y, &x); y; }

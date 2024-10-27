@@ -1,0 +1,6 @@
+char c;
+int main() {
+  c = 1;
+
+  c;
+}

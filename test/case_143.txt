@@ -1,0 +1,19 @@
+int main() {
+  int sum;
+  sum = 0;
+
+  int i;
+  i = 1;
+  if (1) {
+    int i;
+    i = 2;
+
+    sum = sum + i;
+  }
+  if (1) {
+    int sum;
+    sum = 0;
+    sum = sum + i;
+  }
+  sum;
+}

@@ -345,18 +345,37 @@ Node *new_num(int val) {
 }
 
 extern char *user_input;
+extern char *filename;
 
-// エラー箇所を報告する
-void error_at(char *loc, char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
+// エラーの起きた場所を報告するための関数
+// 下のようなフォーマットでエラーメッセージを表示する
+//
+// foo.c:10: x = y + + 5;
+//                  式ではありません
+void error_at(char *loc, char *msg) {
+    // locが含まれている行の開始地点と終了地点を取得
+    char *line = loc;
+    while(user_input < line && line[-1] != '\n')
+        line--;
 
-    int pos = loc - user_input;
-    fprintf(stderr, "%s\n", user_input);
-    fprintf(stderr, "%*s", pos, " "); // pos個の空白を出力
-    fprintf(stderr, "^ ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
+    char *end = loc;
+    while (*end != '\n')
+        end++;
+
+    // 見つかった行が全体の何行目かを調べる
+    int line_num = 1;
+    for (char *p = user_input; p < line; p++)
+        if (*p == '\n')
+            line_num++;
+
+    // 見つかった行をファイル名と行番号と一緒に表示
+    int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
+    fprintf(stderr, "%.*s\n", (int)(end -line), line);
+
+    // エラー箇所を指し示して、エラーメッセージを表示
+    int pos = loc - line + indent;
+    fprintf(stderr,"%*s", pos, "");
+    fprintf(stderr, "%s\n", msg);
     exit(1);
 }
 
@@ -417,8 +436,11 @@ Token *consume_ident() {
 // 次のトークンが期待している記号の時にはトークンを一つ進める
 // それ以外の場合はエラーを吐く
 void expect(char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(token->str, op, token->len))
-        error_at(token->str, "expected \"%s\"", op);
+    if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(token->str, op, token->len)) {
+        char *buffer = calloc(1, 20);
+        sprintf(buffer, "expected \"%s\"", op);
+        error_at(token->str, buffer);
+    }
     token = token->next;
 }
 

@@ -1,0 +1,27 @@
+int *arr[3];
+
+int main() {
+  int x;
+  x = 1;
+
+  int y;
+  y = 2;
+
+  int z;
+  z = 3;
+
+  int *xx;
+  xx = &x;
+
+  int *yy;
+  yy = &y;
+
+  int *zz;
+  zz = &z;
+
+  arr[0] = xx;
+  arr[1] = yy;
+  arr[2] = zz;
+
+  *(arr[0]) + *(arr[1]) + *(arr[2]);
+}

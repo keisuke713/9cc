@@ -1,0 +1,1 @@
+int foo() { return 5; } int bar(int x, int y) { x + y; } int main() { int foo; foo = 1; return bar(foo(), foo); }

@@ -1,0 +1,1 @@
+int main() { int foo; foo = 1; if (1) { foo = 6; } else { foo = foo + 1; } if (foo > 4) { foo = foo - 1; } else { foo = foo + 4; } return foo; }

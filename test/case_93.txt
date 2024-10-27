@@ -1,0 +1,1 @@
+int main() { int x; int xx; int *y; int *yy; int **z; int **zz; x = 1; xx = 2; y = &x; yy = &xx; z = &y; zz = &yy; **(zz + 1); }

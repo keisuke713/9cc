@@ -1,0 +1,1 @@
+int main() { int sum; int i; int arr[4]; sum = 0; i = 0; arr[0] = 1; arr[1] = 2; arr[2] = 3; arr[3] = 4; while (sum < 11) { if (i == 3) break; sum = sum + arr[i]; i = i + 1; } sum; }

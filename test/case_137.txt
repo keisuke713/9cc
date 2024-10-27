@@ -1,0 +1,1 @@
+int main() { int i; i = 4; switch (i) { case 4: { i = i + 4; break; } case 3: { i = i + 3; break; }} i; }

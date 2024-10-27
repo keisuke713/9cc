@@ -1,0 +1,1 @@
+int main() {  int hoge; if (1 == 2) {int foo; foo = 3; return foo;} else { hoge = 10; return hoge; } }

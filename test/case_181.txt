@@ -1,0 +1,11 @@
+int main() {
+  char *str1;
+  str1 = "kei";
+
+  char *str2;
+  str2 = "oei";
+
+  if (str1[0] < str2[0])
+    return -1;
+  return 10;
+}

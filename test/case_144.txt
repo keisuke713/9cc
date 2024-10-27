@@ -1,0 +1,15 @@
+int foo(int i) {
+  int time;
+  time = 3;
+  if (i) {
+    int i;
+    i = 2;
+    return i * time;
+  }
+  i;
+}
+int main() {
+  int i;
+  i = 5;
+  foo(i);
+}

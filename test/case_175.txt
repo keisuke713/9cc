@@ -1,0 +1,6 @@
+int main() {
+  char *str;
+  str = "abc";
+  str = "cba";
+  str[0];
+}

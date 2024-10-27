@@ -1,11 +1,41 @@
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "9cc.h"
 
 char *user_input;
+char *filename;
 extern Token *token;
 extern Node *text[100];
 extern Node *bss[100];
 extern Node *rodata[100];
+
+// 指定されたファイルの内容を返す
+char *read_file(char *path) {
+    // open file
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        error("cannnot open: %s: %s", path, strerror(errno));
+    
+    // check file content length
+    if (fseek(fp, 0, SEEK_END) == -1)
+        error("%s: fseek: %s", path, strerror(errno));
+    size_t size = ftell(fp);
+    if (fseek(fp, 0, SEEK_SET) == -1)
+        error("%s: fseek: %s", path, strerror(errno));
+
+    // load file content
+    char *buf = calloc(1, size + 2);
+    fread(buf, size, 1, fp);
+
+    // set break like and NULL
+    if (size == 0 || buf[size - 1] != '\n')
+        buf[size++] = '\n';
+    buf[size] = '\0';
+    fclose(fp);
+    return buf;
+}
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -14,7 +44,8 @@ int main(int argc, char **argv) {
     }
 
     // トークナイズしてパースする
-    user_input = argv[1];
+    filename = argv[1];
+    user_input = read_file(filename);
     token = tokenize(user_input);
     program();
 

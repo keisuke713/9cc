@@ -1,0 +1,15 @@
+int c_to_i(char c) {
+  switch (c) {
+    case 'a': {
+      return 97;
+    }
+    case 'b': {
+      return 98;
+    }
+  }
+  return 0;
+}
+
+int main() {
+  return c_to_i('a');
+}

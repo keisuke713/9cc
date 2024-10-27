@@ -1,0 +1,12 @@
+int main() {
+  int i;
+  i = 1024;
+
+  char c;
+  c = 1;
+
+  i;
+  c;
+
+  c == 1;
+}

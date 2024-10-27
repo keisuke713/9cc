@@ -1,0 +1,1 @@
+int bar(int x, int y) { x + y; } int main() { return bar(1, 2); }
