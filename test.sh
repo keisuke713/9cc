@@ -208,17 +208,16 @@ assert 1 test/case_189.txt
 assert 0 test/case_190.txt
 assert 1 test/case_191.txt
 assert 39 test/case_192.txt
+assert 1 test/case_193.txt
 
 echo OK
 
-# 初期化式(+プロトタイプ宣言)
-# 代入の時型チェック
-# sizeofはarrayのbasesizeとlen見れないか？
-
-# テストをc言語で書き直せるか
-# 関数の戻り値として使うケースあるか？
-# セルフホストで使わないなら省略
-
+# 構造体
+# enum
+# 初期化式(ローカルとグローバル)
+# プロトタイプ宣言
+# 代入の時型チェック(セルフホストが目標なので後回し)
+# sizeofはarrayのbasesizeとlen見れないか？(現状構造体のサイズを確認しているからいいか？)
 
 # 最低限セルフホストに必要なところだけ実装する
 

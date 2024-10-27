@@ -556,6 +556,15 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        // コメントはスキップ
+        // ブロックコメントは未サポート
+        if (strncmp(p, "//", 2) == 0) {
+            p += 2;
+            while (*p != '\n')
+                p++;
+            continue;
+        }
+
         if (strncmp(p, "sizeof", 6) == 0 && !is_alnum(p[6])) {
             cur = new_token(TK_SIZEOF, cur, "sizeof", 6);
             p += 6;

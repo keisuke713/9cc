@@ -1,0 +1,5 @@
+int main() {
+    // hoge
+    int c;
+    c = 1; // for fuga
+}
