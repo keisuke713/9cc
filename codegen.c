@@ -458,6 +458,10 @@ void gen(Node *node) {
             printf("    .string %.*s\n", node->str_len, node->str_val);
             return;
         }
+        case ND_ENUM_DEC: {
+            // コード生成の段階では何もしない
+            return;
+        }
     }
 
     gen(node->lhs);

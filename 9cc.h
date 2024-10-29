@@ -29,15 +29,18 @@ typedef enum {
     INT,
     PTR,
     ARRAY,
+    ENUM,
 } TypeKind;
 
 typedef struct Type Type;
 
 struct Type {
     TypeKind kind;
-    Type *ptr_to;
+    Type *ptr_to; // ptrの時のベース型
     Type *base; // arrayの時のベース型
     int array_size;
+    char *user_defined_name; // EnumかStructの場合の型名
+    int name_len;
 };
 
 typedef struct Func Func;
@@ -106,6 +109,7 @@ typedef enum {
     ND_FUNC,     // 関数定義
     ND_ADDR,     // アドレス
     ND_DEREF,    // アドレス参照
+    ND_ENUM_DEC, // enum定義
 } NodeKind;
 
 typedef struct Node Node;
@@ -143,6 +147,26 @@ struct Node {
     LVar *locals; // スコープ内の変数
 
     int n_lc_offset; // for string literal
+};
+
+typedef struct EnumVal EnumVal;
+
+struct EnumVal {
+    char *name;
+    int name_len;
+    int val;
+
+    EnumVal *next;
+};
+
+typedef struct Enum Enum;
+
+struct Enum {
+    char *name;
+    int name_len;
+    EnumVal *member; // 定義されている値たち
+
+    Enum *next; // 定義されているenum一覧をグローバルで管理する
 };
 
 Node *new_node(NodeKind kind);

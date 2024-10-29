@@ -1,0 +1,12 @@
+enum Flag {
+    HOGE,
+    FUGA,
+};
+
+int foo(enum Flag f) {
+    f == FUGA;
+}
+
+int main() {
+    foo(HOGE);
+}

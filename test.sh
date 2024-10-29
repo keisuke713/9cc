@@ -209,13 +209,19 @@ assert 0 test/case_190.txt
 assert 1 test/case_191.txt
 assert 39 test/case_192.txt
 assert 1 test/case_193.txt
+assert 1 test/case_194.txt
+assert 0 test/case_195.txt
+assert 3 test/case_196.txt
 
 echo OK
 
-# 構造体
-# enum
+typedef やる
+typedef(こいつも連結リストで繋いていく、struct TokenとTokenみたいな感じ)
+original_nameとdefined_nameを持たせてdefined_nameと合致した場合original_nameを返す
+あとは次のtypedefをnextで持たせておく
+# 構造体(callocでsizeof使うが式でなく構造体名渡しているから改修いるね)
 # 初期化式(ローカルとグローバル)
-# プロトタイプ宣言
+# プロトタイプ宣言(extern含)
 # 代入の時型チェック(セルフホストが目標なので後回し)
 # sizeofはarrayのbasesizeとlen見れないか？(現状構造体のサイズを確認しているからいいか？)
 

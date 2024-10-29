@@ -305,7 +305,7 @@ int type_size(Type *type) {
     if (type->kind == CHAR)
         return 1;
 
-    if (type->kind == INT)
+    if (type->kind == INT || type->kind == ENUM)
         return 4;
 
     if (type->kind == PTR)
@@ -396,6 +396,11 @@ GVar *gvars;
 int n_lc_offset = 0;
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty);
+
+// 定義されているenum群
+Enum *enums;
+
+Enum *new_enum(Enum *next, char *name, int len, EnumVal *member);
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -536,6 +541,36 @@ GVar *find_gvar(Token *tok) {
     return NULL;
 }
 
+Enum *new_enum(Enum *next, char *name, int len, EnumVal *member) {
+    Enum *enam = calloc(1, sizeof(Enum));
+    enam->next = next;
+    enam->name = name;
+    enam->name_len = len;
+    enam->member = member;
+
+    return enam;
+}
+
+EnumVal *new_enum_val(EnumVal *next, char *name, int len, int val) {
+    EnumVal *e_val = calloc(1, sizeof(EnumVal));
+    e_val->next = next;
+    e_val->name = name;
+    e_val->name_len = len;
+    e_val->val = val;
+
+    return e_val;
+}
+
+EnumVal *find_enum(Token *tok) {
+    for (Enum *e = enums; e; e = e->next) {
+        for (EnumVal *v = e->member; v; v = v->next) {
+            if (v->name_len == tok->len && !(memcmp(tok->str, v->name, v->name_len)))
+                return v;
+        }
+    }
+    return NULL;
+}
+
 int is_alnum(char c) {
     return ('a' <= c && c <= 'z') ||
            ('A' <= c && c <= 'Z') ||
@@ -637,6 +672,12 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "enum", 4) == 0 && !is_alnum(p[4])) {
+            cur = new_token(TK_RESERVED, cur, "enum", 4);
+            p += 4;
+            continue;
+        }
+
         if (*p == 34) {
             char *start = p;
             int len = 0;
@@ -655,11 +696,11 @@ Token *tokenize(char *p) {
             continue;;
         }
 
-        if (('a' <= *p && *p <= 'z') || '_' == *p) {
+        if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z') || '_' == *p) {
             // pは進んでいくのでスタート時点のアドレスを保持する
             char *start = p;
             int len = 0;
-            while (('a' <= *p && *p <= 'z') || ('0' <= *p && *p <= '9') || '_' == *p) {
+            while (('a' <= *p && *p <= 'z') || ('0' <= *p && *p <= '9') || ('A' <= *p && *p <= 'Z') || '_' == *p) {
                 len++;
                 p++;
             }
@@ -702,10 +743,18 @@ Type *parse_type() {
         kind = INT;
     else if(consume("char"))
         kind = CHAR;
+    else if(consume("enum")) {
+        kind = ENUM;
+    }
     else
         return NULL;
 
     Type *ty = new_type(kind, NULL);
+    if (ty->kind == ENUM) {
+        ty->user_defined_name = token->str;
+        ty->name_len = token->len;
+        token = token->next;
+    }
     Type *curr_ty = ty;
     while (consume("*")) {
         Type *ptr_ty = new_type(PTR, curr_ty);
@@ -715,6 +764,7 @@ Type *parse_type() {
 }
 
 void program();
+Node *dec();
 Node *func();
 Node *stmt();
 Node *expr();
@@ -738,7 +788,7 @@ void program() {
     int text_i = 0;
 
     while (!at_eof()) {
-        Node *node = func();
+        Node *node = dec();
         if (node->kind == ND_DEC_GVAR)
             bss[bss_i++] = node;
         else
@@ -747,6 +797,36 @@ void program() {
     text[text_i] = NULL;
     bss[bss_i] = NULL;
     rodata[rodata_i] = NULL;
+}
+
+Node *dec() {
+    if (consume("enum")) {
+        if (!enums)
+            enums = new_enum(NULL, "dummy", 5, NULL);
+        Enum *enam = calloc(1, sizeof(Enum));
+        enam->name = token->str;
+        enam->name_len = token->len;
+
+        token = token->next;
+        expect("{");
+        EnumVal *e_val = new_enum_val(NULL, "dummy", 5, 0);
+        int val = 0;
+
+        while (!consume("}")) {
+            e_val = new_enum_val(e_val, token->str, token->len, val++);
+            token = token->next;
+            expect(",");
+        }
+        expect(";");
+        enam->next = enums;
+        enam->member = e_val;
+        enums = enam;
+
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_ENUM_DEC;
+        return node;
+    }
+    return func();
 }
 
 // func = stmt*
@@ -1229,6 +1309,10 @@ Node *primary() {
                 return arrGvar;
             }
             error_at(token->str, "宣言されていません");
+        }
+        EnumVal *e_val = find_enum(tok);
+        if (e_val) {
+            return new_num(e_val->val);
         }
         Node *node = calloc(1, sizeof(Node));
 
