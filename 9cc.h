@@ -39,8 +39,6 @@ struct Type {
     Type *ptr_to; // ptrの時のベース型
     Type *base; // arrayの時のベース型
     int array_size;
-    char *user_defined_name; // EnumかStructの場合の型名
-    int name_len;
 };
 
 typedef struct Func Func;
@@ -159,14 +157,21 @@ struct EnumVal {
     EnumVal *next;
 };
 
-typedef struct Enum Enum;
+typedef struct UType UType;
 
-struct Enum {
+// ユーザー定義型
+struct UType {
+    TypeKind kind;
+
     char *name;
-    int name_len;
-    EnumVal *member; // 定義されている値たち
+    int len;
 
-    Enum *next; // 定義されているenum一覧をグローバルで管理する
+    char *alias;
+    int alias_len;
+
+    EnumVal *enum_member; // enumの時のみ使用
+
+    UType *next;
 };
 
 Node *new_node(NodeKind kind);

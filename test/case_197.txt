@@ -1,0 +1,15 @@
+typedef enum {
+    FOO,
+    HOGE,
+    FUGA,
+} Flag;
+
+int foo(Flag f) {
+    f == HOGE;
+}
+
+int main() {
+    foo(HOGE);
+}
+
+//scope_node->locals -> 0x555555560090

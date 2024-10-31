@@ -1,0 +1,12 @@
+typedef enum {
+    HOGE,
+    FUGA,
+} Flag;
+
+int foo(Flag f) {
+    f == FUGA;
+}
+
+int main() {
+    foo(HOGE);
+}

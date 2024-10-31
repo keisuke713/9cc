@@ -397,10 +397,9 @@ int n_lc_offset = 0;
 
 LVar *new_lvar(LVar *next, char *name, int len, int offset, Type *ty);
 
-// 定義されているenum群
-Enum *enums;
-
-Enum *new_enum(Enum *next, char *name, int len, EnumVal *member);
+// ユーザー独自型
+UType *u_types;
+UType *new_u_type(TypeKind kind, char *name, int len, char *alias, int alias_len, UType *next);
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
@@ -541,16 +540,6 @@ GVar *find_gvar(Token *tok) {
     return NULL;
 }
 
-Enum *new_enum(Enum *next, char *name, int len, EnumVal *member) {
-    Enum *enam = calloc(1, sizeof(Enum));
-    enam->next = next;
-    enam->name = name;
-    enam->name_len = len;
-    enam->member = member;
-
-    return enam;
-}
-
 EnumVal *new_enum_val(EnumVal *next, char *name, int len, int val) {
     EnumVal *e_val = calloc(1, sizeof(EnumVal));
     e_val->next = next;
@@ -562,10 +551,47 @@ EnumVal *new_enum_val(EnumVal *next, char *name, int len, int val) {
 }
 
 EnumVal *find_enum(Token *tok) {
-    for (Enum *e = enums; e; e = e->next) {
-        for (EnumVal *v = e->member; v; v = v->next) {
+    for (UType *u = u_types; u; u = u->next) {
+        if (!u->kind == ENUM)
+            continue;
+        for (EnumVal *v = u->enum_member; v; v = v->next) {
             if (v->name_len == tok->len && !(memcmp(tok->str, v->name, v->name_len)))
                 return v;
+        }
+    }
+    return NULL;
+}
+
+UType *new_u_type(TypeKind kind, char *name, int len, char *alias, int alias_len, UType *next) {
+    UType *u = calloc(1, sizeof(UType));
+    u->kind = kind;
+
+    u->name = name;
+    u->len = len;
+
+    u->alias = alias;
+    u->alias_len = alias_len;
+
+    u->next = next;
+
+    return u;
+}
+
+// ユーザー定義型に合致する名称確認する
+// 存在する場合はtokenを次に進める
+UType *find_u_type(Token *tok) {
+    for (UType *u = u_types; u; u = u->next) {
+        if (u->name) {
+            if (u->len == tok->len && !(memcmp(tok->str, u->name, u->len))) {
+                token = token->next;
+                return u;
+            }
+        }
+        if (u->alias) {
+            if (u->alias_len == tok->len && !(memcmp(tok->str, u->alias, u->alias_len))) {
+                token = token->next;
+                return u;
+            }
         }
     }
     return NULL;
@@ -678,6 +704,12 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "typedef", 7) == 0 && !is_alnum(p[7])) {
+            cur = new_token(TK_RESERVED, cur, "typedef", 7);
+            p += 7;
+            continue;
+        }
+
         if (*p == 34) {
             char *start = p;
             int len = 0;
@@ -745,16 +777,18 @@ Type *parse_type() {
         kind = CHAR;
     else if(consume("enum")) {
         kind = ENUM;
-    }
-    else
-        return NULL;
-
-    Type *ty = new_type(kind, NULL);
-    if (ty->kind == ENUM) {
-        ty->user_defined_name = token->str;
-        ty->name_len = token->len;
+        // 名称をスキップ
         token = token->next;
     }
+    else {
+        UType *u = find_u_type(token);
+        if (u)
+            kind = u->kind;
+        else
+            return NULL;
+    }
+
+    Type *ty = new_type(kind, NULL);
     Type *curr_ty = ty;
     while (consume("*")) {
         Type *ptr_ty = new_type(PTR, curr_ty);
@@ -800,12 +834,36 @@ void program() {
 }
 
 Node *dec() {
+    if (consume("typedef")) {
+        if (consume("enum")) {
+            if (!u_types)
+                u_types = new_u_type(ENUM, "dummy", 5, "dummy", 5, NULL);
+            u_types = new_u_type(ENUM, NULL, 0, NULL, 0, u_types);
+            expect("{");
+            EnumVal *e_val = new_enum_val(NULL, "dummy", 5, 0);
+            int val = 0;
+            while (!consume("}")) {
+                e_val = new_enum_val(e_val, token->str, token->len, val++);
+                token = token->next;
+                expect(",");
+            }
+            u_types->enum_member = e_val;
+            u_types->alias = token->str;
+            u_types->alias_len = token->len;
+            token = token->next;
+            expect(";");
+
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_ENUM_DEC;
+            return node;
+        }
+        // if (consume("strcut")) {}
+        return NULL;
+    }
     if (consume("enum")) {
-        if (!enums)
-            enums = new_enum(NULL, "dummy", 5, NULL);
-        Enum *enam = calloc(1, sizeof(Enum));
-        enam->name = token->str;
-        enam->name_len = token->len;
+        if (!u_types)
+            u_types = new_u_type(ENUM, "dummy", 5, "dummy", 5, NULL);
+        u_types = new_u_type(ENUM, token->str, token->len, NULL, 0, u_types);
 
         token = token->next;
         expect("{");
@@ -818,9 +876,7 @@ Node *dec() {
             expect(",");
         }
         expect(";");
-        enam->next = enums;
-        enam->member = e_val;
-        enums = enam;
+        u_types->enum_member = e_val;
 
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_ENUM_DEC;

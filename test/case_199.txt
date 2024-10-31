@@ -1,0 +1,24 @@
+typedef enum {
+    Foo,
+    Hoge,
+    Fuga,
+} Flag;
+
+int foo(Flag f) {
+    switch (f) {
+        case Foo: {
+            return 1;
+        }
+        case Hoge: {
+            return 2;
+        }
+        case Fuga: {
+            return 3;
+        }
+    }
+    return 0;
+}
+
+int main() {
+    return foo(Fuga);
+}
