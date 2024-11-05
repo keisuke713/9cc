@@ -1,0 +1,17 @@
+typedef struct Calc Calc;
+
+struct Calc {
+    int num1;
+    int num2;
+};
+
+int add(Calc c) {
+    return c.num1 + c.num2;
+}
+
+int main() {
+    Calc c;
+    c.num1 = 1;
+    c.num2 = 2;
+    add(c);
+}

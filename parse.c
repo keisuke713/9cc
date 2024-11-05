@@ -298,6 +298,8 @@ int c_to_i(char c) {
     return 0;
 }
 
+UType *find_u_type(char *str, int len);
+
 int type_size(Type *type) {
     if (type == NULL)
         return 0;
@@ -313,6 +315,17 @@ int type_size(Type *type) {
 
     if (type->kind == ARRAY)
         return type_size(type->base) * type->array_size;
+
+    if (type->kind == STRUCT) {
+        UType *t = find_u_type(type->name, type->name_len);
+        if (!t)
+            return 0;
+        int size = 0;
+        for (SMember *m = t->s_member; m; m = m->next) {
+            size += type_size(m->ty);
+        }
+        return size;
+    }
 }
 
 Type *new_type(TypeKind kind, Type *ptr_to) {
@@ -562,6 +575,25 @@ EnumVal *find_enum(Token *tok) {
     return NULL;
 }
 
+SMember *new_s_member(SMember *next, char *name, int len, Type *ty, int offset) {
+    SMember *s_mem = calloc(1, sizeof(SMember));
+    s_mem->next = next;
+    s_mem->name = name;
+    s_mem->len = len;
+    s_mem->ty = ty;
+    s_mem->offset = offset;
+
+    return s_mem;
+}
+
+SMember *find_s_member(UType *u, char *name, int len) {
+    for (SMember *m = u->s_member; m; m = m->next) {
+        if (m->len == len && !(memcmp(m->name, name, m->len)))
+            return m;
+    }
+    return NULL;
+}
+
 UType *new_u_type(TypeKind kind, char *name, int len, char *alias, int alias_len, UType *next) {
     UType *u = calloc(1, sizeof(UType));
     u->kind = kind;
@@ -579,17 +611,15 @@ UType *new_u_type(TypeKind kind, char *name, int len, char *alias, int alias_len
 
 // ユーザー定義型に合致する名称確認する
 // 存在する場合はtokenを次に進める
-UType *find_u_type(Token *tok) {
+UType *find_u_type(char *str, int len) {
     for (UType *u = u_types; u; u = u->next) {
         if (u->name) {
-            if (u->len == tok->len && !(memcmp(tok->str, u->name, u->len))) {
-                token = token->next;
+            if (u->len == len && !(memcmp(str, u->name, u->len))) {
                 return u;
             }
         }
         if (u->alias) {
-            if (u->alias_len == tok->len && !(memcmp(tok->str, u->alias, u->alias_len))) {
-                token = token->next;
+            if (u->alias_len == len && !(memcmp(str, u->alias, u->alias_len))) {
                 return u;
             }
         }
@@ -606,9 +636,9 @@ int is_alnum(char c) {
 
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p) {
-    Token head;
-    head.next = NULL;
-    Token *cur = &head;
+    Token *head = calloc(1, sizeof(Token));
+    head->next = NULL;
+    Token *cur = head;
 
     while (*p) {
         // 空白文字をスキップ
@@ -710,6 +740,12 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "struct", 6) == 0 && !is_alnum(p[6])) {
+            cur = new_token(TK_RESERVED, cur, "struct", 6);
+            p += 6;
+            continue;
+        }
+
         if (*p == 34) {
             char *start = p;
             int len = 0;
@@ -747,7 +783,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>=;{},&[]:", *p) != NULL) {
+        if (strchr("+-*/()<>=;{},&[]:.", *p) != NULL) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -764,13 +800,15 @@ Token *tokenize(char *p) {
     }
 
     new_token(TK_EOF, cur, p, 0);
-    return head.next;
+    return head->next;
 }
 
 // 型の解析
 // 型でない場合はnilを返す
 Type *parse_type() {
     TypeKind kind;
+    char *name;
+    int len;
     if (consume("int"))
         kind = INT;
     else if(consume("char"))
@@ -780,15 +818,27 @@ Type *parse_type() {
         // 名称をスキップ
         token = token->next;
     }
+    else if(consume("struct")) {
+        kind = STRUCT;
+        name = token->str;
+        len = token->len;
+        token = token->next;
+    }
     else {
-        UType *u = find_u_type(token);
-        if (u)
+        UType *u = find_u_type(token->str, token->len);
+        if (u) {
             kind = u->kind;
+            name = u->name;
+            len = u->len;
+            token = token->next;
+        }
         else
             return NULL;
     }
 
     Type *ty = new_type(kind, NULL);
+    ty->name = name;
+    ty->name_len = len;
     Type *curr_ty = ty;
     while (consume("*")) {
         Type *ptr_ty = new_type(PTR, curr_ty);
@@ -857,7 +907,24 @@ Node *dec() {
             node->kind = ND_ENUM_DEC;
             return node;
         }
-        // if (consume("strcut")) {}
+        if (consume("struct")) {
+            if (!u_types)
+                u_types = new_u_type(ENUM, "dummy", 5, "dummy", 5, NULL);
+            char *name = token->str;
+            int len = token->len;
+            token = token->next;
+
+            char *alias = token->str;
+            int alias_len = token->len;
+            token = token->next;
+
+            u_types = new_u_type(STRUCT, name, len, alias, alias_len, u_types);
+            expect(";");
+
+            Node *node = calloc(1, sizeof(Node));
+            node->kind = ND_STRUCT_DEC;
+            return node;
+        }
         return NULL;
     }
     if (consume("enum")) {
@@ -880,6 +947,37 @@ Node *dec() {
 
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_ENUM_DEC;
+        return node;
+    }
+    if (consume("struct")) {
+        if (!u_types)
+            u_types = new_u_type(STRUCT, "dummy", 5, "dummy", 5, NULL);
+
+        // すでにtypedefで定義されていた場合その定義を使用する
+        // typedefのすぐ後にstruct定義来ていなかったらバグるかも
+        UType *u_t = find_u_type(token->str, token->len);
+        if (u_t)
+            u_types = u_t;
+        else
+            u_types = new_u_type(STRUCT, token->str, token->len, NULL, 0, u_types);
+
+        token = token->next;
+        expect("{");
+        SMember *sm = new_s_member(NULL, "dummy", 5, NULL, 0);
+
+        int offset = 0;
+        while (!consume("}")) {
+            Type *t = parse_type();
+            sm = new_s_member(sm, token->str, token->len, t, offset);
+            offset += type_size(t);
+            token = token->next;
+            expect(";");
+        }
+        expect(";");
+        u_types->s_member = sm;
+
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_STRUCT_DEC;
         return node;
     }
     return func();
@@ -1366,6 +1464,50 @@ Node *primary() {
             }
             error_at(token->str, "宣言されていません");
         }
+        // 構造体のメンバーへのアクセス
+        if (consume(".")) {
+            // 内側のスコープから対象の変数が宣言されているか確認していく
+            LVar *lvar;
+            for (Node *scope = scope_node; scope; scope = scope->outer_scope) {
+                lvar = find_lvar(tok, scope);
+                if (lvar) {
+                    if (lvar->ty->kind != STRUCT)
+                        error_at(token->str, "invalid operator '.'");
+                    UType *u_type = find_u_type(lvar->ty->name, lvar->ty->name_len);
+                    if (!u_type)
+                        error_at(token->str, "undefined struct name");
+                    SMember *m = find_s_member(u_type, token->str, token->len);
+                    if (!m)
+                        error_at(token->str, "undefined member name");
+                    token = token->next;
+                    int offset = lvar->offset - m->offset;
+                    while(consume(".")) {
+                        if (m->ty->kind != STRUCT)
+                            error_at(m->name, "invalid operator '.'");
+                        UType *u_type = find_u_type(m->ty->name, m->ty->name_len);
+                        if (!u_type)
+                            error_at(m->name, "undefiend struct name");
+                        m = find_s_member(u_type, token->str, token->len);
+                        if (!m)
+                            error_at(token->str, "undefined member name");
+                        token = token->next;
+                        // offset += m->offset;
+                        offset -= m->offset;
+                    }
+                    Node *s_node = calloc(1, sizeof(Node));
+                    s_node->kind = ND_LVAR;
+                    s_node->offset = offset;
+                    s_node->ty = m->ty;
+                    return s_node;
+                }
+            }
+            // TODO セルフホストに必要そうならやる
+            // GVar *gvar = find_gvar(tok);
+            // if (gvar) {
+            // }
+            error_at(token->str, "宣言されていません");
+        }
+        if (consume("->")) {}
         EnumVal *e_val = find_enum(tok);
         if (e_val) {
             return new_num(e_val->val);

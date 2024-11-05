@@ -462,6 +462,9 @@ void gen(Node *node) {
             // コード生成の段階では何もしない
             return;
         }
+        case ND_STRUCT_DEC: {
+            return;
+        }
     }
 
     gen(node->lhs);

@@ -1,0 +1,12 @@
+typedef struct Node Node;
+
+struct Node {
+    int val;
+};
+
+int main() {
+    Node n;
+    n.val = 1;
+
+    n.val;
+}

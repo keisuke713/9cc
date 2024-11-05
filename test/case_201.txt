@@ -1,0 +1,17 @@
+struct Person {
+    int age;
+};
+
+struct Class {
+    struct Person p;
+};
+
+int main() {
+    struct Person p;
+    p.age = 28;
+
+    struct Class c;
+    c.p = p;
+
+    c.p.age;
+}

@@ -30,6 +30,7 @@ typedef enum {
     PTR,
     ARRAY,
     ENUM,
+    STRUCT,
 } TypeKind;
 
 typedef struct Type Type;
@@ -39,6 +40,9 @@ struct Type {
     Type *ptr_to; // ptrの時のベース型
     Type *base; // arrayの時のベース型
     int array_size;
+
+    char *name; // 構造体の時の名称
+    int name_len;
 };
 
 typedef struct Func Func;
@@ -108,6 +112,7 @@ typedef enum {
     ND_ADDR,     // アドレス
     ND_DEREF,    // アドレス参照
     ND_ENUM_DEC, // enum定義
+    ND_STRUCT_DEC, // 構造体定義
 } NodeKind;
 
 typedef struct Node Node;
@@ -157,6 +162,18 @@ struct EnumVal {
     EnumVal *next;
 };
 
+typedef struct SMember SMember;
+
+// 構造体のフィールド
+struct SMember {
+    char *name;
+    int len;
+    Type *ty;
+    int offset;
+
+    SMember *next;
+};
+
 typedef struct UType UType;
 
 // ユーザー定義型
@@ -170,6 +187,7 @@ struct UType {
     int alias_len;
 
     EnumVal *enum_member; // enumの時のみ使用
+    SMember *s_member; // structの時のみ使用
 
     UType *next;
 };

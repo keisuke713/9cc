@@ -1,0 +1,10 @@
+struct Node {
+    int val;
+};
+
+int main() {
+    struct Node n;
+    n.val = 1;
+
+    n.val;
+}

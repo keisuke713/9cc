@@ -215,61 +215,25 @@ assert 3 test/case_196.txt
 assert 1 test/case_197.txt
 assert 0 test/case_198.txt
 assert 3 test/case_199.txt
+assert 1 test/case_200.txt
+assert 28 test/case_201.txt
+assert 1 test/case_202.txt
+assert 2 test/case_203.txt
+assert 2 test/case_203.txt
+assert 3 test/case_204.txt
+assert 0 test/case_205.txt
+assert 1 test/case_206.txt
+
+# todo(セルフホストには必要ないから一旦省略)
+# arrays[i].doのような構文
+# arrays[i] = any struct のような構文
 
 echo OK
 
-10/31
-ミニマムにやっていく
-UTypeの方でメンバーの情報も持つ(名前、型、オフセット)
-type_size関数の時に型名が渡されるからfind_u_typeで該当の定義型を取得してSTRUCTならメンバーのフィールドのサイズを合計した値を出す
-UTypeにstruct_member構造体を持たせる
-Type {
-  .
-  .
-  .
-  char *name;
-  int name_len;
-}
-UType {
-  SMember *s_member // メンバーの連結リスト
-}
-struct SMember {
-  char *name;
-  int len;
-  int offset;
+アロー演算子(スタックにポインタで渡す)
+calloc
+自己参照型
 
-  Type *ty;
-}
-u->hoge の時は型名からfind_u_typeで該当の構造体を取得して合致するフィールドを取得
-->lvarに型名入れておかないとfind_u_typeで見つけられないかも？
-->ty持っているからそこに名称入れるか
-
-10/30
-User定義型を作ってタイプ、定義名(+len)、エイリアス(+len)、フィールド(or enumの値)、次の型をひとつ作る
-フィールドにはname,len, type, offset
-typedefが来たときはtypeを新しく作って先頭に持ってくる
-structが来た時はすでに定義されているかtypesを一周する
-typedefを使っていない定義の時もtypesにぶち込む(エイリアスは空)
-
-# curr_typeの時にtypesから合致するものを取得、curr_typeにフィール/ド追加してセットする(typedef使っていてもいなくてもset)
-# type_sizeの時に独自型がセットされていればそこを参照する
-find_u_typeで該当の型定義取得(このType構造体にメンバーの型定義も持たせておく)
-フィールド名はどこで管理するか？Type???
-
-10/29
-typedef やる
-typedef(こいつも連結リストで繋いていく、struct TokenとTokenみたいな感じ)
-original_nameとdefined_nameを持たせてdefined_nameと合致した場合original_nameを返す
-あとは次のtypedefをnextで持たせておく
-型情報は基本的にサイズを決めるためのもの(スタックのオフセットとか)
-あとは構造体の場合おそらくメンバーのオフセットとかも必要になる
-
-typedefからわかるのは対象型の名称のみ(FlagとかNodeとか)
-typedefのkindを基にenumsかstructsを探す
-(structsはメンバーのオフセットも持っておく)
-
-Type構造体はENUMかARRAYかだけ返す or type構造体にそれ用のフィールドを持たす(型のサイズを)
-type_sizeで構造体の場合はmemberの型名の合計を出す
 # 構造体(callocでsizeof使うが式でなく構造体名渡しているから改修いるね)
 # 初期化式(ローカルとグローバル)
 # プロトタイプ宣言(extern含)
