@@ -11,7 +11,7 @@ assert() {
   if [ "$actual" = "$expected" ]; then
     echo "$input => $actual"
   else
-    echo "$input => $expected expected, but got $actual"
+    echo "$input => expected $expected, but got $actual"
     exit 1
   fi
 }
@@ -223,24 +223,31 @@ assert 2 test/case_203.txt
 assert 3 test/case_204.txt
 assert 0 test/case_205.txt
 assert 1 test/case_206.txt
+assert 1 test/case_207.txt
+assert 2 test/case_208.txt
+assert 3 test/case_209.txt
+assert 4 test/case_210.txt
+assert 2 test/case_211.txt
+assert 3 test/case_212.txt
+assert 4 test/case_213.txt
+assert 2 test/case_214.txt
+assert 9 test/case_215.txt
+assert 7 test/case_216.txt
+assert 52 test/case_217.txt
+
+echo OK
+
+
+型定義と引数の型の確認をする
+代入の時型チェック(セルフホストが目標なので後回し)
+初期化式(ローカルとグローバル)
+プロトタイプ宣言(extern含)
+# 最低限セルフホストに必要なところだけ実装する
 
 # todo(セルフホストには必要ないから一旦省略)
 # arrays[i].doのような構文
 # arrays[i] = any struct のような構文
-
-echo OK
-
-アロー演算子(スタックにポインタで渡す)
-calloc
-自己参照型
-
-# 構造体(callocでsizeof使うが式でなく構造体名渡しているから改修いるね)
-# 初期化式(ローカルとグローバル)
-# プロトタイプ宣言(extern含)
-# 代入の時型チェック(セルフホストが目標なので後回し)
 # sizeofはarrayのbasesizeとlen見れないか？(現状構造体のサイズを確認しているからいいか？)
-
-# 最低限セルフホストに必要なところだけ実装する
 
 # バイナリ作る時のうざい警告直す
 # /usr/bin/ld: warning: /tmp/ccpmaX0R.o: missing .note.GNU-stack section implies executable stack

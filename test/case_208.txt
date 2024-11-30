@@ -1,0 +1,17 @@
+typedef struct Node Node;
+
+struct Node {
+    int val;
+    int val2;
+};
+
+int main() {
+    Node n;
+    n.val = 1; // 0x7fffffffe4d8
+    n.val2 = 2; // 0x7fffffffe4dc
+
+    Node *p; // 0x7fffffffe4d0
+    p = &n;
+
+    p->val2;
+}

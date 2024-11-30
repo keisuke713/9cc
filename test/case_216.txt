@@ -1,0 +1,105 @@
+typedef enum {
+    TK_RESERVED, // 記号
+    TK_IDENT,    // 識別子
+    TK_NUM,      // 整数トークン
+    TK_CHAR,     // character token
+    TK_EOF,      // 入力の終わりを表すトークン
+    TK_SIZEOF,   // sizeof
+    TK_LITERAL,  // string literal
+} TokenKind;
+
+typedef struct Token Token;
+
+struct Token {
+    TokenKind kind; // トークンの型
+    Token *next;    // 次の入力トークン
+    int val;        // kindがTK_NUMの場合、その数値
+    char c_val;     // kindがTK_CHARの場合の値
+    char *str;      // トークン文字列
+    int len;        // トークンの長さ
+};
+
+int calloc(int nelem, int esize);
+
+Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
+    Token *tok;
+    tok = calloc(1, sizeof(Token));
+    tok->kind = kind;
+    tok->str = str;
+    tok->len = len;
+    cur->next = tok;
+
+    return tok;
+}
+
+int isspace(char p) {
+    return p == 32;
+}
+
+int isdigit(char p) {
+    if (p < 48)
+        return 0;
+    if (57 < p)
+        return 0;
+    return 1;
+}
+
+int strchr(char *str, char p) {
+    int i;
+    i = 0;
+
+    // double quotationの発生数
+    int cnt;
+    cnt = 0;
+    while (cnt < 2) {
+        if (str[i] == p) {
+            return 1;
+        }
+        if (str[i] == 34) {
+            cnt++;
+        }
+    }
+    return 0;
+}
+
+Token *tokenize(char *p) {
+    Token *head;
+    head = calloc(1, sizeof(Token));
+
+    Token *cur;
+    cur = head;
+
+    while (*p) {
+        // 空白文字をスキップ
+        if (isspace(*p)) {
+            p++;
+            continue;
+        }
+
+        if (strchr("+-", *p)) {
+            cur = new_token(TK_RESERVED, cur, p++, 1);
+            continue;
+        }
+
+        if (isdigit(*p)) {
+            cur = new_token(TK_NUM, cur, p, 0);
+            char *q;
+            q = p;
+            cur->val = *p - 48;
+            cur->len = 1;
+            p++;
+            continue;
+        }
+    }
+    return head->next;
+}
+
+int main() {
+    char *src;
+    src = "4 + 3";
+
+    Token *token;
+    token = tokenize(src);
+
+    return token->val + token->next->next->val;
+}

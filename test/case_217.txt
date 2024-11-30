@@ -1,0 +1,6 @@
+int main() {
+    char *src;
+    src = "4 + 3";
+
+    src[0];
+}

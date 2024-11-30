@@ -1,0 +1,27 @@
+typedef struct Node Node;
+
+struct Node {
+    int val;
+    Node *next;
+};
+
+int calloc(int nelem, int esize);
+
+int main() {
+    Node *head;
+    head = calloc(1, sizeof(Node));
+
+    Node *curr;
+    curr = head;
+
+    int i;
+    for (i = 1; i < 5; i++) {
+        Node *n;
+        n = calloc(1, sizeof(Node));
+        n->val = i;
+        curr->next = n;
+        curr = n;
+    }
+
+    return head->next->next->val;
+}

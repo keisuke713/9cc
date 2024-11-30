@@ -113,6 +113,7 @@ typedef enum {
     ND_DEREF,    // アドレス参照
     ND_ENUM_DEC, // enum定義
     ND_STRUCT_DEC, // 構造体定義
+    ND_TYPE,     // タイプ名
 } NodeKind;
 
 typedef struct Node Node;

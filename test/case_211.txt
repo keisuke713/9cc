@@ -1,0 +1,23 @@
+typedef struct Node Node;
+
+struct Node {
+    int val;
+    Node *next;
+};
+
+int main() {
+    Node n1; // 0x7fffffffe4d4(offset 12)
+    n1.val = 1; // 0x7fffffffe4d4
+
+    Node *p1; // 0x7fffffffe4cc(offset 20)
+    p1 = &n1;
+
+    Node n2; // 0x7fffffffe4c0(offset 32)
+    n2.val = 2; // 0x7fffffffe4c0
+
+    Node *p2; // 0x7fffffffe4b8(offset 40)
+    p2 = &n2;
+
+    p1->next = p2; // p->next = 0x7fffffffe4d8
+    p1->next->val;
+}

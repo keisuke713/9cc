@@ -746,13 +746,21 @@ Token *tokenize(char *p) {
             continue;
         }
 
+        if (strncmp(p, "->", 2) == 0) {
+            cur = new_token(TK_RESERVED, cur, "->", 2);
+            p += 2;
+            continue;
+        }
+
         if (*p == 34) {
-            char *start = p;
-            int len = 0;
-            while (('a' <= *p && *p <= 'z') || '"' == *p) {
+            char *start = p++;
+            int len = 1;
+            while ('"' != *p) {
                 p++;
                 len++;
             }
+            p++;
+            len++;
             cur = new_token(TK_LITERAL, cur, start, len);
             continue;
         }
@@ -1002,7 +1010,6 @@ Node *func() {
         Func *f = find_func(token);
         if (f)
             error_at(token->str, "すでに定義されている関数です");
-        node->kind = ND_FUNC;
         scope_node = node;
         Func *func = new_func(funcs, tok->str, tok->len, curr_ty);
 
@@ -1047,9 +1054,13 @@ Node *func() {
         }
         node->args = arguDummy->next;
         // 関数本体のパース
-        if (token->next != NULL && !(memcmp(token->str, "{", token->len)))
-            // プロトタイプどうしましょうかね
+        if (token->next != NULL && !(memcmp(token->str, "{", token->len))) {
+            node->kind = ND_FUNC;
             node->body = stmt();
+        } else {
+            node->kind = ND_DECL;
+            expect(";");
+        }
     }
     // グローバル変数の場合
     else {
@@ -1384,7 +1395,11 @@ Node *primary() {
 
             return node;
         }
-        error_at(token->str, "識別子ではありません");
+        // 型名そのものを渡すパターンもあるのでエラーにはしない
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_TYPE;
+        node->ty = curr;
+        return node;
     }
 
     Token *tok = consume_ident();
@@ -1507,7 +1522,56 @@ Node *primary() {
             // }
             error_at(token->str, "宣言されていません");
         }
-        if (consume("->")) {}
+        // ポインタ構造体のメンバーへのアクセス
+        if (consume("->")) {
+            // 内側のスコープから対象の変数が宣言されているか確認していく
+            LVar *lvar;
+            for (Node *scope = scope_node; scope; scope = scope->outer_scope) {
+                lvar = find_lvar(tok, scope);
+                if (lvar) {
+                    if (lvar->ty->kind != PTR || lvar->ty->ptr_to == NULL || lvar->ty->ptr_to->kind != STRUCT)
+                        error_at(token->str, "invalid operator '->'");
+                    UType *u_type = find_u_type(lvar->ty->ptr_to->name, lvar->ty->ptr_to->name_len);
+                    if (!u_type)
+                        error_at(token->str, "undefined struct name");
+                    SMember *m = find_s_member(u_type, token->str, token->len);
+                    if (!m)
+                        error_at(token->str, "undefined member name");
+                    token = token->next;
+
+                    Node *s_node = new_binary(ND_LVAR, NULL, NULL, lvar->ty);
+                    s_node->offset = lvar->offset;
+
+                    Node *offset_node = new_binary(ND_NUM, NULL, NULL, new_type(INT, NULL));
+                    offset_node->val = m->offset;
+
+                    Node *add_node = new_binary(ND_ADD, s_node, offset_node, new_type(PTR, m->ty));
+
+                    Node *defer_node = new_binary(ND_DEREF, add_node, NULL, add_node->ty->ptr_to);
+
+                    while(consume("->")) {
+                        if (m->ty->kind != PTR || m->ty->ptr_to == NULL || m->ty->ptr_to->kind != STRUCT)
+                            error_at(m->name, "invalid operator '->'");
+                        UType *u_type = find_u_type(m->ty->ptr_to->name, m->ty->ptr_to->name_len);
+                        if (!u_type)
+                            error_at(m->name, "undefined struct name");
+                        m = find_s_member(u_type, token->str, token->len);
+                        if (!m)
+                            error_at(token->str, "undefined member name");
+                        token = token->next;
+
+                        offset_node = new_binary(ND_NUM, NULL, NULL, new_type(INT, NULL));
+                        offset_node->val = m->offset;
+
+                        add_node = new_binary(ND_ADD, defer_node, offset_node, new_type(PTR, m->ty));
+
+                        defer_node = new_binary(ND_DEREF, add_node, NULL, add_node->ty->ptr_to);
+                    }
+
+                    return defer_node;
+                }
+            }
+        }
         EnumVal *e_val = find_enum(tok);
         if (e_val) {
             return new_num(e_val->val);
