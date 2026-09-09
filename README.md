@@ -1,1 +1,1 @@
-## toy compiler inspiring by 8cc
+## toy compiler inspired by 8cc
